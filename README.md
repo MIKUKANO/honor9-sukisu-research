@@ -73,9 +73,9 @@ Android SDK platform-tools（adb / fastboot）。
 | 目标机型 | 荣耀 9 高配版 **STF-AL10**（HiSilicon Kirin 960，Android 9 / API 28，EMUI 9.1.0.225） |
 | 内核基线 | **盘古内核**（maimaiguanfan）· Linux **4.9.148** 华为魔改（非 GKI） |
 | 集成的 root | **SukiSU Ultra v4.1.1**（`com.sukisu.ultra`，versionCode 40496） |
-| 编入的隐藏 | **SUSFS**，`show enabled_features` 报告 **9 项全开** |
-| 最终版本 | `4.9.148-SukiSU`，内核 `#32`，构建于 2026-10-02 04:58:07 UTC |
-| 发布镜像 | **v34**（`MIKUKANO@ATRI`）/ v32（`root@x`），见 [Releases](../../releases) |
+| 编入的隐藏 | **SUSFS**，`ksud susfs features` 报告 **9 项全开** |
+| 最终版本 | `4.9.148-SukiSU`，构建标识 `MIKUKANO@ATRI`，构建于 2026-10-02 17:35:56 UTC |
+| 发布镜像 | **v34**（构建标识 `MIKUKANO@ATRI`），见 [Releases](../../releases) |
 | 编译状态 | `BUILD_EXIT=0`、`error` **0**、`undefined reference` **0** |
 | 刷写方式 | `dd` 写 `kernel` 分区（**无 boot/ramdisk**，`RAMDISK_SZ=0`），回读 sha256 校验一致 |
 | 救援通道 | eRecovery（音量上）+ **fastboot 已打通**（音量下 + 插 USB） |
@@ -94,20 +94,16 @@ Android SDK platform-tools（adb / fastboot）。
 
 最新可刷镜像发布在 **GitHub Releases**：
 
-> **👉 [Releases · v34](https://github.com/MIKUKANO/honor9-sukisu-research/releases/tag/v34)**（最新）
-> 👉 [Releases · v32](https://github.com/MIKUKANO/honor9-sukisu-research/releases/tag/v32)
+> **👉 [Releases · v34](https://github.com/MIKUKANO/honor9-sukisu-research/releases/tag/v34)**（当前唯一发布版）
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| `kernel_sukisu_v34.img` | 15,177,728 B | **推荐**。= v32 功能 + 构建标识 `MIKUKANO@ATRI` |
-| `kernel_sukisu_v32.img` | 15,177,728 B | 功能相同，构建标识为 `root@x`（编译机默认） |
+| `kernel_sukisu_v34.img` | 15,177,728 B | **推荐**。SukiSU Ultra v4.1.1 + SUSFS，构建标识 `MIKUKANO@ATRI` |
+| `winusb_honor9.patch` | 565 B | 让 Windows 认出本机 fastboot 的 INF 补丁（见 [FASTBOOT_DRIVER.md](docs/FASTBOOT_DRIVER.md)） |
 
 ```
 v34  MD5    75446834432f4cbe138014333b1a2025
      SHA256 f4032ba798626c5e895357a8a306d88bc4a818e9ac4aa715ff23146ff42d63c7
-
-v32  MD5    4290e34d5c14f1c2b04b331323dd0bf3
-     SHA256 352fe4387df0233817fbb2d62276061bb462a1120609c7da2798da31930586aa
 ```
 
 一行下载（可选）：
@@ -166,8 +162,8 @@ curl -L -O https://github.com/MIKUKANO/honor9-sukisu-research/releases/download/
 | **v29** | 修复 `reboot()` 重复派发 + 注册去重 | `#28` |
 | ~~v30~~ | 关闭 3 项 debug 配置做性能优化 → **刷入卡在「BL 已解锁」界面，已作废** | **勿刷** |
 | **v31** | **`SUSFS_VERSION` `v2.3.0` → `v2.0.0`**，根治 AVC 开关 | `#32` |
-| **v32** | 去个人化：`CONFIG_LOCALVERSION="-SukiSU"`、构建标识改用内核默认 | 首个发布版 |
-| **v34** | **当前推荐发布版**：= v32 功能 + 构建标识 `MIKUKANO@ATRI` | 见 [Releases](../../releases) |
+| **v32** | 去个人化：`CONFIG_LOCALVERSION="-SukiSU"`、构建标识改用内核默认 | 首个发布版（**已下线**） |
+| **v34** | **当前推荐发布版**：= v32 功能 + 构建标识 `MIKUKANO@ATRI` | ⭐ **见 [Releases](../../releases)** |
 
 > ℹ️ **没有 v33** —— 该编号被 `docker` 研究分支的独立实验占用（单独 defconfig，与本发布线无关）。
 

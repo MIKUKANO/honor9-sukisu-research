@@ -235,9 +235,13 @@ adb shell "su -c 'cat /proc/version'"
 #       ↑ v34 的构建标识；v32 是 (root@x)
 
 # 确认 root 与 SUSFS 都在
-adb shell "su -c 'ksud susfs version'"
-adb shell "su -c 'ksud susfs show enabled_features'"
+adb shell "su -c 'ksud susfs version'"      # 期望: v2.0.0
+adb shell "su -c 'ksud susfs status'"       # 期望: true
+adb shell "su -c 'ksud susfs features'"     # 期望: 9 项 CONFIG_KSU_SUSFS_*
 ```
+
+> ⚠️ **`ksud susfs` 只有三个子命令：`status` / `version` / `features`。**
+> 写 `ksud susfs show ...` 会报 `error: unrecognized subcommand 'show'`。
 
 > ⭐ **判断跑的是哪个内核，看 `#N` + 构建时间**，不要只看 `uname -r` ——
 > 各版本的 `localversion` 可能相同。
