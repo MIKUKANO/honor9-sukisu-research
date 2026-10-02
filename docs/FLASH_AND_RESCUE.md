@@ -66,16 +66,33 @@ adb reboot
 
 | 场景 | 手段 |
 |---|---|
-| 系统能开机，adb 可用 | `adb reboot bootloader` 进入 fastboot（**不需要音量键**），BL 已解锁可直接 `fastboot flash kernel xxx.img` |
+| ⭐ 系统卡死 / 卡在「BL 已解锁」 | **fastboot 刷回旧内核**：关机 → 音量下 + 插 USB → `fastboot flash kernel <可用镜像>.img`（**不需要 root，实测有效**，见下方实测记录） |
+| 系统能开机，adb 可用 | `adb shell` + `su -c 'dd ...'`（需 root）；想用 fastboot 则 `adb reboot bootloader` |
 | 系统卡死但 adbd 已起 | 部分情况 `adb wait-for-device` 可抢救 |
-| 完全变砖（无 adb） | 若物理按键组合不被 bootloader 接受，则无 fastboot/recovery → 只能拆机短接测试点或送修。**因此任何写入分区操作前必须完成备份与哈希校验** |
+| 完全变砖（无 adb、按键也没反应） | 才需要考虑拆机短接测试点或送修。**因此任何写入分区操作前必须完成备份与哈希校验** |
+
+> ✅ **fastboot 实测记录（2026-10-02，v30 事故救援）**：
+> ```
+> fastboot devices        → 5JP0217C07002543  fastboot
+> fastboot flash kernel kernel_sukisu_v29.img
+>                         → Sending 'kernel' (14822 KB) OKAY
+>                           Writing 'kernel' OKAY
+> ```
+> **卡在「BL 已解锁」界面时，就是靠 fastboot 刷回旧内核救活的**（约 3 分钟恢复）。
+
+> ℹ️ **华为 fastboot 只锁 `getvar`，没锁 `flash`**：`getvar all` / `product` / `unlocked` /
+> `partition-size:*` 全部 `FAILED (remote: 'Command not allowed')`，**只有 `max-download-size` 可读**
+> （值 `471859200`）。**但这不影响 `flash` 与 `reboot`** —— 别因 getvar 报错就以为刷不了。
+>
+> ⚠️ **前提是驱动已装好**：设备枚举 `USB\VID_18D1&PID_D00D`（FriendlyName `HI3650`），
+> Google 官方 INF 不含它，需用**改版 INF** 手工安装（见本文件下方）。
 
 > 2026-10-02 更正：**音量键实测可用**（`hisi_gpio_key` @ `/dev/input/event1`，
 > 注册了 `KEY_VOLUMEDOWN`+`KEY_VOLUMEUP`；按音量下使 `volume_music_speaker` 8→0）。
-> 项目此前"物理损坏"的记录是误判。但**按键组合能否进 fastboot/recovery 未经验证**，
-> 所以仍把 `adb reboot bootloader` 当作唯一可靠救援通道。
+> 项目此前"物理损坏"的记录是误判。**按键组合可进 fastboot / eRecovery**
+> （fastboot = 关机 + 音量下 + 插 USB；eRecovery = 开机按住音量上）。
 
-已验证：`adb reboot bootloader` → fastboot 可用（BL 解锁状态）。
+已验证：`adb reboot bootloader` → fastboot 可进入；`fastboot flash kernel` **可用**。
 bootloader 分区完整备份：`artifacts/fastboot_partition_backup.img`（12MB，sha256
 `68f3d7715cd645dc1ff78bcbac4ab7399164c694254d40d1ee8837ef8b52d306`）。
 
