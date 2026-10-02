@@ -10,20 +10,42 @@
 
 | # | 项目 | 仓库地址 | 许可 | 在本项目中的角色 |
 |---|---|---|---|---|
-| 1 | **KernelSU** | https://github.com/tiann/KernelSU | GPL-2.0 | 内核态 root 方案的理论与代码基础 |
-| 2 | **SukiSU Ultra** | https://github.com/SukiSU-Ultra/SukiSU-Ultra | GPL-2.0 | 本项目集成并适配的 root 方案（v4.1.1 / versionCode 40496） |
-| 3 | **SUSFS** | https://gitlab.com/simonpunk/susfs4ksu | GPL-3.0 | root 隐藏内核补丁；上游提供 4.9 分支，本项目做了**非 GKI 适配** |
-| 4 | **LSPosed** | https://github.com/LSPosed/LSPosed | GPL-3.0 | Xposed 框架（本项目使用 v2.2.0 / 7854） |
-| 5 | **Zygisk Next** | https://github.com/Dr-TSNG/ZygiskNext | GPL-3.0 | Zygisk 实现（模块 id `zygisksu`） |
-| 6 | **Shamiko** | https://github.com/LSPosed/LSPosed.github.io/releases | — | 「上锁状态」（BL 隐藏）脚本思路来源；SUSFS 管理器内置的隐藏脚本即改写自此 |
-| 7 | **jadx** | https://github.com/skylot/jadx | Apache-2.0 | 反编译 SukiSU 管理器 APK 的分析工具（本项目用 1.5.0） |
-| 8 | **Android USB Driver** | https://developer.android.com/studio/run/win-usb | — | fastboot 驱动；需手工补充 `USB\VID_18D1&PID_D00D` |
-| 9 | **Android Open Source Project** | https://source.android.com/ | Apache-2.0 | 平台基础 |
-| 10 | **Linux Kernel** | https://www.kernel.org/ | GPL-2.0 | 内核基础（华为开源 4.9.148 分支） |
+| 1 | ⭐ **盘古内核 Pangu Kernel**<br>（作者 **maimaiguanfan / 麥麥觀飯**） | https://github.com/maimaiguanfan/android_kernel_huawei_hi3660 <br>国内镜像：https://gitee.com/maimaiguanfan/Pangu9.1EROFS | GPL-2.0 | ⭐ **本项目的内核源码基线**（Kirin 960 / 4.9.148 / EMUI 9.1 EROFS）。本项目在其 `HarmonyOS` 分支之上打补丁。**荣耀 9 能跑第三方内核完全归功于盘古** |
+| 2 | **ARM GNU Toolchain**<br>（经盘古作者镜像） | https://gitee.com/maimaiguanfan/arm-gcc （分支 `aarch64-gcc10`）<br>上游：https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads | GPL-3.0 + GCC Runtime Library Exception | 交叉编译工具链（gcc 10.3，前缀 `aarch64-none-linux-gnu-`） |
+| 3 | **KernelSU** | https://github.com/tiann/KernelSU | GPL-2.0 | 内核态 root 方案的理论与代码基础 |
+| 4 | **SukiSU Ultra** | https://github.com/SukiSU-Ultra/SukiSU-Ultra | GPL-2.0 | 本项目集成并适配的 root 方案（v4.1.1 / versionCode 40496） |
+| 5 | **SUSFS** | https://gitlab.com/simonpunk/susfs4ksu | GPL-3.0 | root 隐藏内核补丁；上游提供 4.9 分支，本项目做了**非 GKI 适配** |
+| 6 | **LSPosed** | https://github.com/LSPosed/LSPosed | GPL-3.0 | Xposed 框架（本项目使用 v2.2.0 / 7854） |
+| 7 | **Zygisk Next** | https://github.com/Dr-TSNG/ZygiskNext | GPL-3.0 | Zygisk 实现（模块 id `zygisksu`） |
+| 8 | **Shamiko** | https://github.com/LSPosed/LSPosed.github.io/releases | — | 「上锁状态」（BL 隐藏）脚本思路来源；SUSFS 管理器内置的隐藏脚本即改写自此 |
+| 9 | **jadx** | https://github.com/skylot/jadx | Apache-2.0 | 反编译 SukiSU 管理器 APK 的分析工具（本项目用 1.5.0） |
+| 10 | **Momo (Mahoshojo)** | https://github.com/vvb2060/Mahoshojo | — | 仅作为**检测验证**工具（确认 root 痕迹暴露面），**非本项目组件** |
+| 11 | **Android USB Driver** | https://developer.android.com/studio/run/win-usb | — | fastboot 驱动；需手工补充 `USB\VID_18D1&PID_D00D` |
+| 12 | **Android Open Source Project** | https://source.android.com/ | Apache-2.0 | 平台基础（`mkbootimg` 等） |
+| 13 | **Linux Kernel** | https://www.kernel.org/ | GPL-2.0 | 内核基础 |
 
-### 特别说明
+### 1.1 盘古内核对本项目的具体贡献
+
+**必须澄清**：本项目**没有**从零编写任何 governor 或调度器。下列特性**全部由盘古内核提供**，
+本项目只是**沿用**并把它们记录为性能基线：
+
+| 特性 | 说明 |
+|---|---|
+| `zen` I/O 调度器 | 盘古从上游移植并设为默认 |
+| `blu_schedutil` CPU governor | 盘古从 Honor 9 EMUI8 Proto Kernel 移植，设为默认 |
+| `gpu_scene_aware` GPU governor | 盘古解锁的华为隐藏 governor |
+| Dynamic Stune Boost | 盘古加入 |
+| WireGuard | 盘古加入 |
+| SELinux 限制解锁 | 盘古在 defconfig 层解锁 |
+| Kirin 970 JPEG 处理引擎移植 | 盘古从 Kirin 970 移植 |
+| `fsync` 开关 / Spectrum 支持 | 盘古加入 |
+
+本项目**自行完成**的工作是：在其之上**集成 SukiSU Ultra 驱动 + 移植 SUSFS + 修复缺陷 + 逐项验证**。
+
+### 1.2 特别说明
 
 - 本仓库**不包含**上述任何项目的源码或二进制产物，仅包含自行编写的**文档、脚本与补丁**。
+- **全部外部依赖的版本、获取方式与许可，见 [`docs/TOOLS.md`](docs/TOOLS.md)。**
 - `docs/` 与 `patches/SUSFS_ABI_NOTES.md` 中引用的代码片段，仅用于**技术说明**，版权归原项目所有。
 - SUSFS 的 `kernel_patches/` 与 `ksu_susfs` 工具**未**随本仓库分发，请从上游获取。
 - 如果本仓库的任何内容侵犯了你的权益，请提 Issue，作者会**立即**处理。
@@ -64,6 +86,17 @@ AI 会犯错。本项目**刻意保留了「错误结论 → 实测推翻 → �
 所有**最终决策**（刷不刷、改不改、删不删）与**真机操作**均由人类完成并承担后果。
 AI 的产出经人类审核后才被采纳。
 
+### 2.5 边界声明
+
+**AI 未创作任何第三方项目。** 盘古内核、KernelSU / SukiSU Ultra、SUSFS、LSPosed、Zygisk Next、
+Shamiko、jadx 等**全部由各自的人类作者开发**，AI 在本项目中只做了：
+
+- **阅读**它们的源码 / 反编译产物；
+- **编写**适配它们的内核补丁、defconfig、构建与诊断脚本；
+- **撰写**记录这一切的文档。
+
+因此本项目的 AI 声明**不适用于**上述任何第三方项目。
+
 ---
 
 ## 三、许可与版权
@@ -76,7 +109,34 @@ AI 的产出经人类审核后才被采纳。
 
 ---
 
-## 四、免责声明
+## 四、第三方工具的分发说明（**本仓库不随包提供**）
+
+本项目需要大量外部工具才能复现。**为避免许可问题、体积膨胀与版本漂移，本仓库一律不转分发**，
+只提供**版本要求 + 官方获取方式**：
+
+| 类别 | 工具 | 本项目所用版本 | 获取方式 |
+|---|---|---|---|
+| 源码 | 盘古内核 | `HarmonyOS` 分支 | https://github.com/maimaiguanfan/android_kernel_huawei_hi3660 |
+| 工具链 | ARM GNU Toolchain | gcc 10.3 | https://gitee.com/maimaiguanfan/arm-gcc （分支 `aarch64-gcc10`） |
+| 驱动源码 | SukiSU Ultra | v4.1.1 / 40496 | https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/tag/v4.1.1 |
+| 内核补丁 | SUSFS | 引擎 1.5.9 | https://gitlab.com/simonpunk/susfs4ksu |
+| 刷写 | Android platform-tools | — | https://developer.android.com/studio/releases/platform-tools |
+| 刷写 | HiSuite（华为 USB 驱动） | — | https://consumer.huawei.com/cn/support/hisuite/ （专有，禁止再分发） |
+| 刷写 | 麒麟盘古工具箱（可选） | V4.9.12.8 | 盘古作者发布（第三方整理，非官方） |
+| 管理器 | SukiSU Ultra APK | 4.1.1 (40496) | https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases |
+| 框架 | LSPosed | v2.2.0 (7854) | https://github.com/LSPosed/LSPosed/releases |
+| 框架 | Zygisk Next | — | https://github.com/Dr-TSNG/ZygiskNext |
+| 分析 | jadx | 1.5.0 | https://github.com/skylot/jadx/releases |
+| 验证 | Momo | 4.4.1 | https://github.com/vvb2060/Mahoshojo |
+
+> ⭐ **完整的依赖清单（含用途、许可、系统包列表、一键安装脚本）见 [`docs/TOOLS.md`](docs/TOOLS.md)。**
+>
+> ✅ **本仓库**提供**自行编写**的：文档、补丁、编译/打包脚本、刷写脚本、诊断脚本，以及
+> fastboot 驱动所需的 **INF 补丁片段**（见 `docs/FLASH_AND_RESCUE.md`）。
+
+---
+
+## 五、免责声明
 
 - 本项目**仅供学习、研究与技术交流**。
 - 刷写自定义内核会**使设备失去保修**、**可能变砖**、**可能清除数据**。

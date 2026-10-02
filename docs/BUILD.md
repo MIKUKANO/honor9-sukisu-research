@@ -2,6 +2,9 @@
 
 环境要求：**Ubuntu 20.04 x86_64**（20.04 是实测通过的版本；22.04 缺 python2 需另行处理），≥2 核 4GB 内存，磁盘 ≥20GB。VM（Proxmox LXC / VirtualBox / WSL2）均可。
 
+> 📦 **全部外部依赖（源码、工具链、platform-tools、APK…）的版本与获取方式见 [`TOOLS.md`](TOOLS.md)。**
+> 本仓库**不随包分发**任何第三方二进制或源码。
+
 ## 一、一键路径（推荐）
 
 ```bash
@@ -22,21 +25,28 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential bc bison flex 
   libssl-dev libncurses5-dev python2.7 python-is-python2 cpio zip rsync wget perl git curl
 ```
 
-### 2. 内核源码
+### 2. 内核源码（⭐ 来源必须标明）
 
-盘古内核（maimaiguanfan），EMUI 9.1 EROFS 版，原生支持荣耀9（骑士定制版：荣耀9/V9/Nova2S/平板M5）：
+**盘古内核 Pangu Kernel**（作者 **maimaiguanfan / 麥麥觀飯**，**GPL-2.0**），
+EMUI 9.1 EROFS 版，原生支持荣耀 9（骑士定制版：荣耀9 / V9 / Nova2S / 平板 M5）：
 
 ```bash
 cd /root
 git clone --depth=1 https://github.com/maimaiguanfan/android_kernel_huawei_hi3660.git kernel_src_gh
 ```
 
+> **国内镜像**：https://gitee.com/maimaiguanfan/Pangu9.1EROFS
+> （gitee 仓库只有一个 README 指路，真源码在 GitHub）
+>
 > 国内直连 github.com 的 git 协议实测可用；archive/codeload 被墙需走代理。
-> 注意：gitee 上的 Pangu9.1EROFS 仓库只有一个 README 指路，真源码在 GitHub。
+>
+> ⭐ **本项目是盘古内核的衍生作品**，其 `zen` / `blu_schedutil` / `gpu_scene_aware` /
+> Dynamic Stune Boost / WireGuard / SELinux 限制解锁 / Kirin 970 JPEG 引擎等特性
+> **均由盘古提供**，本项目只是沿用。致谢与许可详见 [`TOOLS.md`](TOOLS.md) 与 `../NOTICE.md`。
 
 ### 3. 工具链
 
-盘古作者维护的 ARM 官方 gcc 10.3（x86_64 宿主）：
+盘古作者镜像的 **ARM 官方 gcc 10.3**（x86_64 宿主；上游为 ARM GNU Toolchain）：
 
 ```bash
 git clone --depth=1 -b aarch64-gcc10 https://gitee.com/maimaiguanfan/arm-gcc.git toolchain

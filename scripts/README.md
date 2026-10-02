@@ -5,14 +5,19 @@
 
 ## 文件清单
 
-| 脚本 | 说明 |
-|---|---|
-| `build_and_pack.sh` | **编译 + 打包**。生成 defconfig → `make Image.gz` → 校验 ARM64 魔数 → 用华为官方参数（`base=0x0`、`tags_offset=0x07A00000`、`kernel_offset=0x00080000`、`header_version=1` 等）打包成 `kernel_sukisu.img` |
-| `flash_v31.sh` | **刷入 + 校验**（在设备端执行）。先备份现有内核 → `dd` 写 `kernel` 分区 → `sync` → **按镜像长度截断回读** → `sha256sum` 比对 |
-| `avc_diag.sh` | **开机阶段诊断脚本范例**。放到 `/data/adb/post-fs-data.d/` 可测量「该阶段能否成功执行某条命令」（本项目用它验证了 SUSFS 的 `post-fs-data` 时序）。⚠️ 用完请删除 |
-| `patch_namespace.py` | 给 `fs/namespace.c` 的 `susfs_is_mnt_devname_ksu()` 加开关门控（含 `-Wdeclaration-after-statement` 的声明顺序修正，幂等） |
-| `mkprobe.py` | 构造一条合成的 `allowlist` 探测条目（复制现有记录、仅改 key/uid），用于验证 KSU 授权持久化的「读 + 写」两条路径 |
-| `tune_v30_defconfig.py` | v30 性能优化尝试的配置调整脚本 —— **该次尝试失败并已回滚**，此文件作为踩坑留档（见 `docs/PATCHES.md` §O） |
+| 脚本 | 平台 | 说明 |
+|---|---|---|
+| `vm_setup.sh` | Linux/VM | **编译环境一键搭建**。系统依赖 → 拉取**盘古内核**源码 → 拉取 gcc 10.3 工具链 → 拉取 SukiSU v4.1.1 驱动并挂载进内核树 → 生成 defconfig → 应用补丁。可重复执行（已有产物自动跳过） |
+| `build_and_pack.sh` | Linux/VM | **编译 + 打包**。生成 defconfig → `make Image.gz` → 校验 ARM64 魔数 → 用华为官方参数（`base=0x0`、`tags_offset=0x07A00000`、`kernel_offset=0x00080000`、`header_version=1` 等）打包成 `kernel_sukisu.img` |
+| `flash_phone.ps1` | Windows | **刷入 + 校验**（`adb` 通道，无需 fastboot）。push → sha256 双向校验 → 备份存在性检查 → `dd` 写 `kernel` 分区 → `sync` → 回读截断校验 → `reboot`。支持 `-Adb <路径>` / `-Image <路径>` / `-SkipBackupCheck` |
+| `flash_v31.sh` | 设备端 | **刷入 + 校验**（在设备 shell 内执行）。先备份现有内核 → `dd` 写 `kernel` 分区 → `sync` → **按镜像长度截断回读** → `sha256sum` 比对 |
+| `avc_diag.sh` | 设备端 | **开机阶段诊断脚本范例**。放到 `/data/adb/post-fs-data.d/` 可测量「该阶段能否成功执行某条命令」（本项目用它验证了 SUSFS 的 `post-fs-data` 时序）。⚠️ 用完请删除 |
+| `patch_namespace.py` | 任意 | 给 `fs/namespace.c` 的 `susfs_is_mnt_devname_ksu()` 加开关门控（含 `-Wdeclaration-after-statement` 的声明顺序修正，幂等） |
+| `mkprobe.py` | 任意 | 构造一条合成的 `allowlist` 探测条目（复制现有记录、仅改 key/uid），用于验证 KSU 授权持久化的「读 + 写」两条路径 |
+| `tune_v30_defconfig.py` | 任意 | v30 性能优化尝试的配置调整脚本 —— **该次尝试失败并已回滚**，此文件作为踩坑留档（见 `docs/PATCHES.md` §O） |
+
+> **推荐顺序**：`vm_setup.sh` → `build_and_pack.sh` → `flash_phone.ps1`（或 `flash_v31.sh`）。
+> 全部外部依赖见 [`../docs/TOOLS.md`](../docs/TOOLS.md)。
 
 ## 重要提示
 

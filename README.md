@@ -42,6 +42,8 @@ Android SDK platform-tools（adb / fastboot）。
 
 | 项目 | 地址 | 许可 | 在本项目中的角色 |
 |---|---|---|---|
+| ⭐ **盘古内核 Pangu Kernel**<br>（作者 **maimaiguanfan / 麥麥觀飯**） | https://github.com/maimaiguanfan/android_kernel_huawei_hi3660 <br>（国内镜像 https://gitee.com/maimaiguanfan/Pangu9.1EROFS） | GPL-2.0 | ⭐ **本项目的内核源码基线**。荣耀 9 能跑第三方内核，全靠盘古。本项目在它的 `HarmonyOS` 分支之上打补丁 |
+| **ARM GNU Toolchain**<br>（经盘古作者镜像） | https://gitee.com/maimaiguanfan/arm-gcc <br>（分支 `aarch64-gcc10`；上游 https://developer.arm.com/ ） | GPL-3.0 + GCC 例外 | 交叉编译工具链（gcc 10.3，`aarch64-none-linux-gnu-`） |
 | **KernelSU** | https://github.com/tiann/KernelSU | GPL-2.0 | 内核态 root 方案的理论与代码基础 |
 | **SukiSU Ultra** | https://github.com/SukiSU-Ultra/SukiSU-Ultra <br>（官网 https://sukisu.org/） | GPL-2.0 | 本项目集成并适配的 root 方案（v4.1.1, versionCode 40496） |
 | **SUSFS** | https://gitlab.com/simonpunk/susfs4ksu | GPL-3.0 | root 隐藏内核补丁（上游为 4.9 提供了 patch，本项目做了非 GKI 适配） |
@@ -49,8 +51,17 @@ Android SDK platform-tools（adb / fastboot）。
 | **Zygisk Next** | https://github.com/Dr-TSNG/ZygiskNext | GPL-3.0 | Zygisk 实现（模块 id `zygisksu`） |
 | **Shamiko** | https://github.com/LSPosed/LSPosed.github.io/releases | — | 「上锁状态」（BL 隐藏）脚本思路来源，SUSFS 管理器内置脚本即改写自此 |
 | **jadx** | https://github.com/skylot/jadx | Apache-2.0 | 反编译 SukiSU 管理器 APK 的分析工具 |
+| **Momo (Mahoshojo)** | https://github.com/vvb2060/Mahoshojo | — | 仅作为**检测验证**工具，非本项目组件 |
 | **Android Bootloader Interface** | https://developer.android.com/studio/run/win-usb | — | fastboot 驱动（需手工补充 `VID_18D1&PID_D00D`） |
 
+> ⭐ **盘古内核对本项目的具体贡献**：本项目的性能基线中，`zen` I/O 调度器、
+> `blu_schedutil` CPU governor、`gpu_scene_aware` GPU governor、Dynamic Stune Boost、
+> WireGuard、SELinux 限制解锁、Kirin 970 JPEG 引擎移植等，**全部来自盘古内核**，
+> 并非本项目所加。本项目的工作是在此基础上**集成 SukiSU + SUSFS 并修复缺陷**。
+>
+> **完整的外部依赖清单（含版本、获取方式、许可、是否随包分发）见 [`docs/TOOLS.md`](docs/TOOLS.md)。**
+> 本仓库**不随包分发任何第三方二进制或源码**。
+>
 > 如果本项目的任何内容侵犯了你的权益，请提 Issue，我会立即处理。
 
 ---
@@ -60,7 +71,7 @@ Android SDK platform-tools（adb / fastboot）。
 | 项 | 结果 |
 |---|---|
 | 目标机型 | 荣耀 9 高配版 **STF-AL10**（HiSilicon Kirin 960，Android 9 / API 28，EMUI 9.1.0.225） |
-| 内核基线 | 华为开源 **4.9.148**（非 GKI，`NON-GKI` 分支） |
+| 内核基线 | **盘古内核**（maimaiguanfan）· Linux **4.9.148** 华为魔改（非 GKI） |
 | 集成的 root | **SukiSU Ultra v4.1.1**（`com.sukisu.ultra`，versionCode 40496） |
 | 编入的隐藏 | **SUSFS**，`show enabled_features` 报告 **9 项全开** |
 | 最终版本 | `4.9.148-非酋&大肥鱼自制max版`，内核 `#32`，构建者 `MIKUKANO@ATRI` |
@@ -161,9 +172,11 @@ honor9-sukisu-research/
 ├── NOTICE.md                     # 参考项目清单 + AI 使用声明（正式版）
 ├── LICENSE                       # MIT（文档与脚本）
 ├── .gitignore
+├── .gitattributes                # 强制 *.sh / *.patch 以 LF 入库
 ├── docs/
 │   ├── DEVICE_NOTES.md           # 设备/分区/环境摸底
 │   ├── BUILD.md                  # 编译环境搭建与构建流程
+│   ├── TOOLS.md                  # ⭐ 工具链与外部依赖清单（版本/来源/许可/是否分发）
 │   ├── FLASH_AND_RESCUE.md       # 刷入、回滚、救援（含 fastboot 驱动）
 │   ├── HEALTH_CHECK.md           # 健康检查与逐项验证记录
 │   ├── PATCHES.md                # 补丁全集与逐条根因分析（最核心，70KB）
@@ -171,14 +184,16 @@ honor9-sukisu-research/
 ├── patches/
 │   ├── README.md                 # 各补丁用途说明
 │   ├── SUSFS_ABI_NOTES.md        # SUSFS ABI 兼容笔记（双布局、err 偏移等）
-│   ├── Pangu_SukiSU_defconfig    # 最终内核配置
+│   ├── Pangu_SukiSU_defconfig    # 最终内核配置（基于盘古 Pangu_Kirin960_defconfig）
 │   ├── ksud_integration_fix.patch
 │   ├── v24_fixes.patch           # sepolicy 移植 + 直钩修复
 │   └── ksu_compat_49.h
 └── scripts/
     ├── README.md                 # 各脚本用途说明
-    ├── build_and_pack.sh         # 编译 + 打包（华为 mkbootimg 参数）
-    ├── flash_v31.sh              # 刷入 + 回读 sha256 校验
+    ├── vm_setup.sh               # Linux 侧：环境搭建 + 源码 + 工具链 + 驱动集成
+    ├── build_and_pack.sh         # Linux 侧：编译 + 打包（华为 mkbootimg 参数）
+    ├── flash_phone.ps1           # Windows 侧：push + 校验 + dd 刷入 + 回读
+    ├── flash_v31.sh              # 设备侧：刷入 + 回读 sha256 校验
     ├── avc_diag.sh               # 开机阶段诊断脚本范例
     ├── mkprobe.py
     ├── tune_v30_defconfig.py
@@ -189,14 +204,27 @@ honor9-sukisu-research/
 
 ## 🚀 复现步骤（简述）
 
+**一键路径**（Ubuntu 20.04 x86_64，2 核 4 GB 即可）：
+
+```bash
+sudo -E bash scripts/vm_setup.sh        # 依赖 + 盘古源码 + 工具链 + SukiSU 驱动 + defconfig + 补丁
+sudo -E bash scripts/build_and_pack.sh  # 编译 + 打包 → $SRC/kernel_sukisu.img
+```
+
+**分步说明**：
+
 1. **准备编译环境**：Linux（本项目用 Ubuntu 20.04，2 核即可）+ `aarch64-none-linux-gnu-` 工具链。
-2. **获取内核源码**：华为官方开源包（4.9.148，Pangu/STF-AL10 对应分支）。
+2. **获取内核源码**：**盘古内核**（`maimaiguanfan/android_kernel_huawei_hi3660`，`HarmonyOS` 分支，
+   4.9.148 / Kirin 960 / 支持 EMUI 9.1 EROFS）。
 3. **集成 SukiSU Ultra**：按上游文档接入驱动源码，或参考 `docs/BUILD.md`。
 4. **打 SUSFS 补丁**：参考 `patches/SUSFS_ABI_NOTES.md` 与 `docs/PATCHES.md`。
    ⚠️ 注意本文档 §2 的版本号陷阱。
 5. **编译打包**：`scripts/build_and_pack.sh`（注意 `CONFIG_LOCALVERSION` 含 `&` 时需改 `Makefile` 的 `filechk_utsrelease.h`）。
-6. **刷入**：`scripts/flash_v31.sh`（`dd` → `sync` → 回读 → sha256 比对）。
+6. **刷入**：`scripts/flash_phone.ps1`（Windows）或 `scripts/flash_v31.sh`（设备侧）
+   —— `dd` → `sync` → 回读 → sha256 比对。
    ⚠️ **回读必须按镜像长度截断**再比对，多出的半页是上一个内核的残留。
+
+> **全部外部依赖（源码、工具链、platform-tools、APK 等）的版本与获取方式见 [`docs/TOOLS.md`](docs/TOOLS.md)。**
 
 详细步骤见 `docs/BUILD.md` 与 `docs/FLASH_AND_RESCUE.md`。
 
