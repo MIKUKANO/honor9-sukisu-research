@@ -1,0 +1,39 @@
+# === 内核镜像与构建产物（体积大，如需分发请用 GitHub Release） ===
+*.img
+*.gz
+*.bin
+Image
+Image.gz
+out/
+
+# === 反编译产物 / 第三方 APK（版权原因，绝不提交） ===
+_work/
+mgr/
+out_sukisu/
+out_momo/
+*.apk
+*.dex
+
+# === 密钥与凭据（绝不提交！） ===
+*vm_key*
+*.pem
+*.ppk
+*.key
+id_rsa*
+id_ed25519*
+askpass.bat
+vm_known_hosts
+vm_ssh_setup.ps1
+vm_exec.ps1
+
+# === 日志与抓取文件 ===
+*.log
+dmesg*
+logcat*
+*_dump.xml
+ui*.xml
+
+# === 系统 ===
+.DS_Store
+Thumbs.db
+desktop.ini

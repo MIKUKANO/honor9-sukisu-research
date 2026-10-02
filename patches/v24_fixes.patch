@@ -1,0 +1,415 @@
+diff --git a/drivers/input/input.c b/drivers/input/input.c
+index 5d94fc3..5b76368 100644
+--- a/drivers/input/input.c
++++ b/drivers/input/input.c
+@@ -431,7 +431,21 @@ void input_event(struct input_dev *dev,
+ 	unsigned long flags;
+ 
+ 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
+-
++#ifdef CONFIG_KSU
++		/* ZCODE_KSU_INPUT_HOOK: count volume-down presses for safe mode.
++		 * Upstream hooked input_handle_event() with a kprobe, but this
++		 * tree has CONFIG_KPROBES=n so register_kprobe() always failed.
++		 * Must stay OUTSIDE dev->event_lock: the hook does pr_info() and
++		 * is also called from the hot input path, so holding an
++		 * irq-disabled spinlock across it would be wrong. */
++		extern bool ksu_input_hook_active;
++		extern int ksu_handle_input_handle_event(unsigned int *type,
++							 unsigned int *code,
++							 int *value);
++
++		if (ksu_input_hook_active)
++			ksu_handle_input_handle_event(&type, &code, &value);
++#endif
+ 		spin_lock_irqsave(&dev->event_lock, flags);
+ 		input_handle_event(dev, type, code, value);
+ 		spin_unlock_irqrestore(&dev->event_lock, flags);
+diff --git a/drivers/kernelsu/ksud.c b/drivers/kernelsu/ksud.c
+index c4df69f..fce04db 100644
+--- a/drivers/kernelsu/ksud.c
++++ b/drivers/kernelsu/ksud.c
+@@ -13,6 +13,7 @@
+ #include <linux/kprobes.h>
+ #include <linux/printk.h>
+ #include <linux/preempt.h>
++#include <linux/stat.h>
+ #include <linux/types.h>
+ #include <linux/uaccess.h>
+ #include <linux/namei.h>
+@@ -31,6 +32,13 @@
+ bool ksu_module_mounted __read_mostly = false;
+ bool ksu_boot_completed __read_mostly = false;
+ 
++/* 源码级直钩开关：drivers/input/input.c 的 input_event() 每次输入事件都会检查
++ * 这个标志。init 启动早期为 true（用于音量下键连按 3 次进安全模式），
++ * on_post_fs_data() -> stop_input_hook() 之后置 false，
++ * 之后所有输入事件都不再进 ksu_handle_input_handle_event()。
++ * （上游靠 kprobe 注销来停止回调；本内核无 kprobe，改用这个标志。） */
++bool ksu_input_hook_active __read_mostly = true;
++
+ static const char KERNEL_SU_RC[] =
+     "\n"
+ 
+@@ -61,7 +69,53 @@ static void stop_input_hook();
+ 
+ static struct work_struct stop_init_rc_hook_work;
+ static struct work_struct stop_execve_hook_work;
+-static struct work_struct stop_input_hook_work;
++
++/* ---- Android 9 补位：应用 KSU 的 SELinux 规则 / 缓存 SID / 切换 ksu_cred ----
++ *
++ * 上游把这三步放在 `/system/bin/init` + `second_stage` 的分支里
++ * （见 ksu_handle_execveat_ksud()），但 Android 9 既没有 `/system/bin/init`
++ * 也没有 `second_stage` 参数，于是本机**这三步从未执行过**，后果：
++ *
++ *   1. apply_kernelsu_rules() 没跑 -> 一条 KSU SELinux 规则都没加载
++ *      -> su 域刷出 446 条 `avc: denied`（本机实测）。Permissive 下只是噪声，
++ *         但若切回 Enforcing，`exec u:r:su:s0 ... ksud` 会被直接拒掉
++ *         -> 模块系统瘫痪（又回到"刷入的模块重启不生效"）。
++ *   2. cache_sid() 没跑 -> ksu_file_sid == 0
++ *      -> KSU_IOCTL_GET_WRAPPER_FD 恒返回 -EINVAL（文件包装功能直接失效）。
++ *   3. setup_ksu_cred() 没跑 -> ksu_cred 未切到 u:r:su:s0。
++ *
++ * 这三个函数里有 mutex_lock()，**不能在 sys_enter tracepoint 的原子上下文里
++ * 直接调用**（preempt_count() != 0 -> "scheduling while atomic"），
++ * 故改为 workqueue 在进程上下文补位。
++ *
++ * 调度时机选在 init 首次读 /init.rc 那一刻（本机实测 15.93s，而 SELinux 策略
++ * 已于 15.86s 加载完成），**早于** init 执行 ksud（19.78s）——
++ * 这个余量正是为将来能安全切回 Enforcing 而留的。
++ */
++static struct work_struct apply_ksu_selinux_rules_work;
++static bool ksu_selinux_rules_done = false;
++
++static void do_apply_ksu_selinux_rules(struct work_struct *work)
++{
++    if (ksu_selinux_rules_done) {
++        return;
++    }
++    ksu_selinux_rules_done = true;
++
++    apply_kernelsu_rules();
++    cache_sid();
++    setup_ksu_cred();
++    pr_info("ksu: selinux rules applied, ksu_file_sid: %u\n", ksu_file_sid);
++}
++
++/* 幂等：重复调用只会入队一次；work 自身也带 done 门。 */
++void ksu_apply_selinux_rules_async(void)
++{
++    if (ksu_selinux_rules_done) {
++        return;
++    }
++    schedule_work(&apply_ksu_selinux_rules_work);
++}
+ 
+ void on_post_fs_data(void)
+ {
+@@ -73,6 +127,10 @@ void on_post_fs_data(void)
+     done = true;
+     pr_info("on_post_fs_data!\n");
+ 
++    /* 兜底：正常路径已在 init 首次读 init.rc 时调度（更早）。这里再调一次，
++     * 以防那条路径没走到；幂等，不会重复应用规则。 */
++    ksu_apply_selinux_rules_async();
++
+     ksu_load_allow_list();
+     ksu_observer_init();
+     // sanity check, this may influence the performance
+@@ -430,8 +488,7 @@ append_ksu_rc:
+ 
+ static bool is_init_rc(struct file *fp)
+ {
+-    if (strcmp(current->comm, "init")) {
+-        // we are only interest in `init` process
++    if (strcmp(current->comm, "init")) {        // we are only interest in `init` process
+         return false;
+     }
+ 
+@@ -468,6 +525,28 @@ static bool is_init_rc(struct file *fp)
+     return true;
+ }
+ 
++/* 供 fs/stat.c 的 vfs_fstat() 调用（源码级直钩）。
++ *
++ * 目的：init 读 /init.rc 时我们会把 KERNEL_SU_RC 追加到文件末尾
++ * （见 read_proxy / read_iter_proxy），若 init 用 fstat 的 st_size 预分配
++ * 缓冲区，就必须让它看到"追加后"的长度，否则最后一段 KERNEL_SU_RC 会被截断。
++ *
++ * 上游用 kretprobe 挂 __arm64_sys_newfstat 做这件事，但两条路都不通：
++ *   - 本内核 CONFIG_KPROBES=n，register_kretprobe() 恒返回 -ENOSYS；
++ *   - arm64 上根本没有 __arm64_sys_newfstat 这个符号（那是 x86 的命名）。
++ * 所以改成在 vfs_fstat() 里直接修正 —— 顺带覆盖所有走 fd 的 stat 路径。
++ *
++ * 注：Android 9 的 init 走 read() 循环读 EOF、并不依赖 st_size（本机实测
++ * 注入完整：`append 351` + `append done`）；本钩子是为机制完整性而补，
++ * Android 10+ 的 init 会用 fstat 预分配，那时它是必需的。
++ */
++void ksu_fixup_init_rc_stat(struct file *fp, struct kstat *stat)
++{
++    if (is_init_rc(fp)) {
++        stat->size += ksu_rc_len;
++    }
++}
++
+ /* 供 syscall tracepoint (sys_enter, __NR_read) 调用。
+  * 原实现是 kprobe 挂 __arm64_sys_read，但本内核 CONFIG_KPROBES=n，
+  * register_kprobe() 恒返回 -ENOSYS，钩子永远不会生效。 */
+@@ -497,6 +576,11 @@ void ksu_handle_sys_read(unsigned int fd)
+     pr_info("read init.rc, comm: %s, rc_count: %zu\n", current->comm,
+             ksu_rc_len);
+ 
++    /* Android 9 补位：此刻（本机 15.93s）SELinux 策略已加载完成（15.86s），
++     * 而 init 执行 ksud 要到 19.78s —— 在这里异步应用 KSU 规则，
++     * 是"能切回 Enforcing"所必需的最早可用时机。见文件上方长注释。 */
++    ksu_apply_selinux_rules_async();
++
+     // Now we need to proxy the read and modify the result!
+     // But, we can not modify the file_operations directly, because it's in read-only memory.
+     // We just replace the whole file_operations with a proxy one.
+@@ -607,59 +691,16 @@ static int sys_read_handler_pre(struct kprobe *p, struct pt_regs *regs)
+     return 0;
+ }
+ 
+-static int sys_fstat_handler_pre(struct kretprobe_instance *p,
+-                                 struct pt_regs *regs)
+-{
+-    struct pt_regs *real_regs = PT_REAL_REGS(regs);
+-    unsigned int fd = PT_REGS_PARM1(real_regs);
+-    void *statbuf = PT_REGS_PARM2(real_regs);
+-    *(void **)&p->data = NULL;
+-
+-    struct file *file = fget(fd);
+-    if (!file)
+-        return 1;
+-    if (is_init_rc(file)) {
+-        pr_info("stat init.rc");
+-        fput(file);
+-        *(void **)&p->data = statbuf;
+-        return 0;
+-    }
+-    fput(file);
+-    return 1;
+-}
+-
+-static int sys_fstat_handler_post(struct kretprobe_instance *p,
+-                                  struct pt_regs *regs)
+-{
+-    void __user *statbuf = *(void **)&p->data;
+-    if (statbuf) {
+-        void __user *st_size_ptr = statbuf + offsetof(struct stat, st_size);
+-        long size, new_size;
+-        if (!copy_from_user_nofault(&size, st_size_ptr, sizeof(long))) {
+-            new_size = size + ksu_rc_len;
+-            pr_info("adding ksu_rc_len: %ld -> %ld", size, new_size);
+-            if (!copy_to_user_nofault(st_size_ptr, &new_size, sizeof(long))) {
+-                pr_info("added ksu_rc_len");
+-            } else {
+-                pr_err("add ksu_rc_len failed: statbuf 0x%lx",
+-                       (unsigned long)st_size_ptr);
+-            }
+-        } else {
+-            pr_err("read statbuf 0x%lx failed", (unsigned long)st_size_ptr);
+-        }
+-    }
+-
+-    return 0;
+-}
+-
+-static int input_handle_event_handler_pre(struct kprobe *p,
+-                                          struct pt_regs *regs)
+-{
+-    unsigned int *type = (unsigned int *)&PT_REGS_PARM2(regs);
+-    unsigned int *code = (unsigned int *)&PT_REGS_PARM3(regs);
+-    int *value = (int *)&PT_REGS_CCALL_PARM4(regs);
+-    return ksu_handle_input_handle_event(type, code, value);
+-}
++/*
++ * 已删除的 kprobe 处理函数（sys_fstat_handler_pre/post、
++ * input_handle_event_handler_pre）—— 它们服务的 kprobe 在本内核
++ * （CONFIG_KPROBES=n）永远注册不上，已由源码级直钩取代：
++ *   - st_size 修正 -> fs/stat.c 的 vfs_fstat() 调用 ksu_fixup_init_rc_stat()
++ *   - 音量下键安全模式 -> drivers/input/input.c 的 input_event() 调用
++ *                        ksu_handle_input_handle_event()
++ * 保留它们只会在将来万一打开 KPROBES 时造成**重复处理**
++ * （st_size 被加两次 / 音量键按 2 次就触发安全模式），故一并移除。
++ */
+ 
+ static struct kprobe execve_kp = {
+     .symbol_name = SYS_EXECVE_SYMBOL,
+@@ -671,22 +712,9 @@ static struct kprobe sys_read_kp = {
+     .pre_handler = sys_read_handler_pre,
+ };
+ 
+-static struct kretprobe sys_fstat_kp = {
+-    .kp.symbol_name = SYS_FSTAT_SYMBOL,
+-    .entry_handler = sys_fstat_handler_pre,
+-    .handler = sys_fstat_handler_post,
+-    .data_size = sizeof(void *),
+-};
+-
+-static struct kprobe input_event_kp = {
+-    .symbol_name = "input_event",
+-    .pre_handler = input_handle_event_handler_pre,
+-};
+-
+ static void do_stop_init_rc_hook(struct work_struct *work)
+ {
+     unregister_kprobe(&sys_read_kp);
+-    unregister_kretprobe(&sys_fstat_kp);
+ }
+ 
+ static void do_stop_execve_hook(struct work_struct *work)
+@@ -694,11 +722,6 @@ static void do_stop_execve_hook(struct work_struct *work)
+     unregister_kprobe(&execve_kp);
+ }
+ 
+-static void do_stop_input_hook(struct work_struct *work)
+-{
+-    unregister_kprobe(&input_event_kp);
+-}
+-
+ static void stop_init_rc_hook()
+ {
+     static bool init_rc_hook_stopped = false;
+@@ -723,8 +746,10 @@ static void stop_input_hook()
+         return;
+     }
+     input_hook_stopped = true;
+-    bool ret = schedule_work(&stop_input_hook_work);
+-    pr_info("unregister input kprobe: %d!\n", ret);
++    /* 源码级直钩（drivers/input/input.c 的 input_event()）：
++     * 把开关置 0 即停止回调，无需注销 kprobe。 */
++    ksu_input_hook_active = false;
++    pr_info("stop input hook\n");
+ }
+ 
+ // ksud: module support
+@@ -734,17 +759,28 @@ void ksu_ksud_init()
+ 
+     /*
+      * ⚠️ 本内核 CONFIG_KPROBES=n，register_kprobe()/register_kretprobe() 是
+-     *    返回 -ENOSYS 的空桩，下面 4 次注册**全部失败**（dmesg 可见
++     *    返回 -ENOSYS 的空桩，下面 2 次注册**全部失败**（dmesg 可见
+      *    `KernelSU: reboot kprobe failed: -38` 同源）。此外 arch.h 里的
+      *    SYS_*_SYMBOL 用的是 4.17+ 的 `__arm64_sys_*` 命名，而 4.9 实际符号
+      *    是 `SyS_*`，即便打开 KPROBES 也会因找不到符号返回 -ENOENT。
+      *
+-     *    因此 ksud 集成的实际驱动路径已迁移到 syscall tracepoint
+-     *    （syscall_hook_manager.c 的 ksu_sys_enter_handler，靠
+-     *    CONFIG_FTRACE_SYSCALLS=y，本机已验证可用）：
+-     *      - __NR_execve -> ksu_handle_execve_ksud()  （zygote / second_stage）
+-     *      - __NR_read   -> ksu_handle_sys_read()     （init.rc 注入）
+-     *    这里保留注册调用仅为最小化改动，失败无副作用（unregister 同样为空桩）。
++     *    因此 4 个 ksud 钩子的实际驱动路径如下：
++     *      - execve      -> syscall tracepoint（sys_enter, __NR_execve）
++     *                       -> ksu_handle_execve_ksud()
++     *      - read        -> syscall tracepoint（sys_enter, __NR_read）
++     *                       -> ksu_handle_sys_read()   （init.rc 注入）
++     *      - newfstat    -> 源码级直钩 fs/stat.c:vfs_fstat()
++     *                       -> ksu_fixup_init_rc_stat() （修正 st_size）
++     *      - input_event -> 源码级直钩 drivers/input/input.c:input_event()
++     *                       -> ksu_handle_input_handle_event()（音量键安全模式）
++     *    后两个没有可用的 tracepoint 可挂（4.9 没有 input 子系统 tracepoint，
++     *    而 fstat 需要"返回值"语义），故走源码级直钩 —— 与 kernel/reboot.c
++     *    的 SukiSU 超级调用同一手法。
++     *
++     *    下面保留 execve/read 的注册调用仅为最小化改动：两者都幂等
++     *    （execve 侧 on_post_fs_data 有 done 门、规则应用有 done 门；
++     *      read 侧有 rc_hooked 门），失败无副作用（unregister 同为空白桩）。
++     *    fstat/input 的 kprobe 注册已删除，避免将来打开 KPROBES 时重复处理。
+      */
+     ret = register_kprobe(&execve_kp);
+     pr_info("ksud: execve_kp: %d (kprobe disabled, tracepoint path in use)\n",
+@@ -754,15 +790,9 @@ void ksu_ksud_init()
+     pr_info("ksud: sys_read_kp: %d (kprobe disabled, tracepoint path in use)\n",
+             ret);
+ 
+-    ret = register_kretprobe(&sys_fstat_kp);
+-    pr_info("ksud: sys_fstat_kp: %d (kprobe disabled)\n", ret);
+-
+-    ret = register_kprobe(&input_event_kp);
+-    pr_info("ksud: input_event_kp: %d (kprobe disabled)\n", ret);
+-
+     INIT_WORK(&stop_init_rc_hook_work, do_stop_init_rc_hook);
+     INIT_WORK(&stop_execve_hook_work, do_stop_execve_hook);
+-    INIT_WORK(&stop_input_hook_work, do_stop_input_hook);
++    INIT_WORK(&apply_ksu_selinux_rules_work, do_apply_ksu_selinux_rules);
+ }
+ 
+ void ksu_ksud_exit()
+@@ -770,5 +800,4 @@ void ksu_ksud_exit()
+     unregister_kprobe(&execve_kp);
+     // this should be done before unregister sys_read_kp
+     // unregister_kprobe(&sys_read_kp);
+-    unregister_kprobe(&input_event_kp);
+ }
+diff --git a/drivers/kernelsu/ksud.h b/drivers/kernelsu/ksud.h
+index 704a0e3..21bb129 100644
+--- a/drivers/kernelsu/ksud.h
++++ b/drivers/kernelsu/ksud.h
+@@ -21,6 +21,23 @@ void ksu_handle_sys_read(unsigned int fd);
+ int ksu_handle_execve_ksud(const char __user **filename_user,
+                            const char __user *const __user *__argv);
+ 
++/* ---- 源码级直钩（本内核没有可用的 kprobe / tracepoint 可挂）---- */
++struct file;
++struct kstat;
++
++/* fs/stat.c:vfs_fstat() -> 把 KERNEL_SU_RC 的长度补进 st_size */
++void ksu_fixup_init_rc_stat(struct file *fp, struct kstat *stat);
++
++/* 音量下键安全模式（drivers/input/input.c:input_event() 调用）。
++ * ksu_input_hook_active 为 false 时调用点直接跳过，不再进函数体。 */
++extern bool ksu_input_hook_active;
++int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code,
++                                  int *value);
++
++/* Android 9 补位：异步（workqueue）应用 apply_kernelsu_rules() /
++ * cache_sid() / setup_ksu_cred()。幂等，可重复调用。 */
++void ksu_apply_selinux_rules_async(void);
++
+ extern u32 ksu_file_sid;
+ extern bool ksu_module_mounted;
+ extern bool ksu_boot_completed;
+diff --git a/drivers/kernelsu/sucompat.c b/drivers/kernelsu/sucompat.c
+index 2bd4e01..6ebc3f9 100644
+--- a/drivers/kernelsu/sucompat.c
++++ b/drivers/kernelsu/sucompat.c
+@@ -22,6 +22,12 @@
+ 
+ #include <linux/version.h>
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
++/* ksu_compat_49.h is force-included (-include) ahead of this file and already
++ * maps strncpy_from_user_nofault() -> strncpy_from_user(). Redefining it here
++ * without an #undef emits `warning: "strncpy_from_user_nofault" redefined`.
++ * Undef first; strncpy_from_unsafe() is the semantically preferred helper for
++ * the execve hook (it tolerates both user and kernel pointers). */
++#undef strncpy_from_user_nofault
+ #define strncpy_from_user_nofault strncpy_from_unsafe
+ #endif
+ 
+diff --git a/fs/stat.c b/fs/stat.c
+index 068fdbc..c16b1fe 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -81,6 +81,18 @@ int vfs_fstat(unsigned int fd, struct kstat *stat)
+ 
+ 	if (f.file) {
+ 		error = vfs_getattr(&f.file->f_path, stat);
++#ifdef CONFIG_KSU
++		/* ZCODE_KSU_INIT_RC_STAT_HOOK: fix up st_size for /init.rc so that
++		 * init (Android 10+) preallocating via fstat() still sees the
++		 * KERNEL_SU_RC bytes appended by our read proxy. On this tree the
++		 * upstream kretprobe on __arm64_sys_newfstat never worked
++		 * (CONFIG_KPROBES=n, and the symbol does not exist on arm64). */
++		if (!error) {
++			extern void ksu_fixup_init_rc_stat(struct file *fp,
++							   struct kstat *stat);
++			ksu_fixup_init_rc_stat(f.file, stat);
++		}
++#endif
+ 		fdput(f);
+ 	}
+ 	return error;

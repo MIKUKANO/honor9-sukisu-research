@@ -1,0 +1,610 @@
+diff --git a/drivers/kernelsu/allowlist.c b/drivers/kernelsu/allowlist.c
+index c1e9598..d3aa0e8 100644
+--- a/drivers/kernelsu/allowlist.c
++++ b/drivers/kernelsu/allowlist.c
+@@ -389,12 +389,12 @@ static void do_persistent_allow_list(struct callback_head *_cb)
+     }
+ 
+     // store magic and version
+-    if (kernel_write(fp, &magic, sizeof(magic), &off) != sizeof(magic)) {
++    if (ksu_kernel_write(fp, &magic, sizeof(magic), &off) != sizeof(magic)) {
+         pr_err("save_allow_list write magic failed.\n");
+         goto close_file;
+     }
+ 
+-    if (kernel_write(fp, &version, sizeof(version), &off) != sizeof(version)) {
++    if (ksu_kernel_write(fp, &version, sizeof(version), &off) != sizeof(version)) {
+         pr_err("save_allow_list write version failed.\n");
+         goto close_file;
+     }
+@@ -404,7 +404,7 @@ static void do_persistent_allow_list(struct callback_head *_cb)
+         pr_info("save allow list, name: %s uid :%d, allow: %d\n",
+                 p->profile.key, p->profile.current_uid, p->profile.allow_su);
+ 
+-        kernel_write(fp, &p->profile, sizeof(p->profile), &off);
++        ksu_kernel_write(fp, &p->profile, sizeof(p->profile), &off);
+     }
+ 
+ close_file:
+@@ -461,13 +461,13 @@ void ksu_load_allow_list()
+     }
+ 
+     // verify magic
+-    if (kernel_read(fp, &magic, sizeof(magic), &off) != sizeof(magic) ||
++    if (ksu_kernel_read(fp, &magic, sizeof(magic), &off) != sizeof(magic) ||
+         magic != FILE_MAGIC) {
+         pr_err("allowlist file invalid: %d!\n", magic);
+         goto exit;
+     }
+ 
+-    if (kernel_read(fp, &version, sizeof(version), &off) != sizeof(version)) {
++    if (ksu_kernel_read(fp, &version, sizeof(version), &off) != sizeof(version)) {
+         pr_err("allowlist read version: %d failed\n", version);
+         goto exit;
+     }
+@@ -477,7 +477,7 @@ void ksu_load_allow_list()
+     while (true) {
+         struct app_profile profile;
+ 
+-        ret = kernel_read(fp, &profile, sizeof(profile), &off);
++        ret = ksu_kernel_read(fp, &profile, sizeof(profile), &off);
+ 
+         if (ret <= 0) {
+             pr_info("load_allow_list read err: %zd\n", ret);
+@@ -644,4 +644,4 @@ void ksu_temp_revoke_root_once(uid_t uid)
+     persistent_allow_list();
+     pr_info("pending_root: UID=%d removed and persist updated\n", uid);
+ }
+-#endif
++#endif
+\ No newline at end of file
+diff --git a/drivers/kernelsu/apk_sign.c b/drivers/kernelsu/apk_sign.c
+index e9cc05d..0f1479f 100644
+--- a/drivers/kernelsu/apk_sign.c
++++ b/drivers/kernelsu/apk_sign.c
+@@ -83,19 +83,19 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset)
+     int i;
+     apk_sign_key_t sign_key;
+ 
+-    kernel_read(fp, size4, 0x4, pos); // signer-sequence length
+-    kernel_read(fp, size4, 0x4, pos); // signer length
+-    kernel_read(fp, size4, 0x4, pos); // signed data length
++    ksu_kernel_read(fp, size4, 0x4, pos); // signer-sequence length
++    ksu_kernel_read(fp, size4, 0x4, pos); // signer length
++    ksu_kernel_read(fp, size4, 0x4, pos); // signed data length
+ 
+     *offset += 0x4 * 3;
+ 
+-    kernel_read(fp, size4, 0x4, pos); // digests-sequence length
++    ksu_kernel_read(fp, size4, 0x4, pos); // digests-sequence length
+ 
+     *pos += *size4;
+     *offset += 0x4 + *size4;
+ 
+-    kernel_read(fp, size4, 0x4, pos); // certificates length
+-    kernel_read(fp, size4, 0x4, pos); // certificate length
++    ksu_kernel_read(fp, size4, 0x4, pos); // certificates length
++    ksu_kernel_read(fp, size4, 0x4, pos); // certificate length
+     *offset += 0x4 * 2;
+ 
+     for (i = 0; i < ARRAY_SIZE(apk_sign_keys); i++) {
+@@ -111,7 +111,7 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset)
+             pr_info("cert length overlimit\n");
+             return false;
+         }
+-        kernel_read(fp, cert, *size4, pos);
++        ksu_kernel_read(fp, cert, *size4, pos);
+         unsigned char digest[SHA256_DIGEST_SIZE];
+         if (ksu_sha256(cert, *size4, digest) < 0) {
+             pr_info("sha256 error\n");
+@@ -153,7 +153,7 @@ static bool has_v1_signature_file(struct file *fp)
+ 
+     loff_t pos = 0;
+ 
+-    while (kernel_read(fp, &header,
++    while (ksu_kernel_read(fp, &header,
+                       sizeof(struct zip_entry_header), &pos) ==
+            sizeof(struct zip_entry_header)) {
+         if (header.signature != 0x04034b50) {
+@@ -163,7 +163,7 @@ static bool has_v1_signature_file(struct file *fp)
+         // Read the entry file name
+         if (header.file_name_length == sizeof(MANIFEST) - 1) {
+             char fileName[sizeof(MANIFEST)];
+-            kernel_read(fp, fileName,
++            ksu_kernel_read(fp, fileName,
+                            header.file_name_length, &pos);
+             fileName[header.file_name_length] = '\0';
+ 
+@@ -211,10 +211,10 @@ static __always_inline bool check_v2_signature(char *path)
+     for (i = 0;; ++i) {
+         unsigned short n;
+         pos = generic_file_llseek(fp, -i - 2, SEEK_END);
+-        kernel_read(fp, &n, 2, &pos);
++        ksu_kernel_read(fp, &n, 2, &pos);
+         if (n == i) {
+             pos -= 22;
+-            kernel_read(fp, &size4, 4, &pos);
++            ksu_kernel_read(fp, &size4, 4, &pos);
+             if ((size4 ^ 0xcafebabeu) == 0xccfbf1eeu) {
+                 break;
+             }
+@@ -227,17 +227,17 @@ static __always_inline bool check_v2_signature(char *path)
+ 
+     pos += 12;
+     // offset
+-    kernel_read(fp, &size4, 0x4, &pos);
++    ksu_kernel_read(fp, &size4, 0x4, &pos);
+     pos = size4 - 0x18;
+ 
+-    kernel_read(fp, &size8, 0x8, &pos);
+-    kernel_read(fp, buffer, 0x10, &pos);
++    ksu_kernel_read(fp, &size8, 0x8, &pos);
++    ksu_kernel_read(fp, buffer, 0x10, &pos);
+     if (strcmp((char *)buffer, "APK Sig Block 42")) {
+         goto clean;
+     }
+ 
+     pos = size4 - (size8 + 0x8);
+-    kernel_read(fp, &size_of_block, 0x8, &pos);
++    ksu_kernel_read(fp, &size_of_block, 0x8, &pos);
+     if (size_of_block != size8) {
+         goto clean;
+     }
+@@ -246,12 +246,12 @@ static __always_inline bool check_v2_signature(char *path)
+     while (loop_count++ < 10) {
+         uint32_t id;
+         uint32_t offset;
+-        kernel_read(fp, &size8, 0x8,
++        ksu_kernel_read(fp, &size8, 0x8,
+                        &pos); // sequence length
+         if (size8 == size_of_block) {
+             break;
+         }
+-        kernel_read(fp, &id, 0x4, &pos); // id
++        ksu_kernel_read(fp, &id, 0x4, &pos); // id
+         offset = 4;
+         if (id == 0x7109871au) {
+             v2_signing_blocks++;
+@@ -378,4 +378,4 @@ bool is_manager_apk(char *path)
+     }
+ #endif
+     return check_v2_signature(path);
+-}
++}
+\ No newline at end of file
+diff --git a/drivers/kernelsu/ksu_compat_49.h b/drivers/kernelsu/ksu_compat_49.h
+index 0320416..c69990b 100644
+--- a/drivers/kernelsu/ksu_compat_49.h
++++ b/drivers/kernelsu/ksu_compat_49.h
+@@ -13,6 +13,17 @@
+ #ifndef strncpy_from_user_nofault
+ #define strncpy_from_user_nofault(dst, src, n) strncpy_from_user(dst, src, n)
+ #endif
++/* 5.8 新增；4.9 用 probe_kernel_read/write 等价替代（同为 nofault 语义，
++ * 返回 0 表示成功）。ksud.c 的 sys_fstat kretprobe 会用到，若不映射会被
++ * 隐式声明为 int func()，运行期行为不可控。 */
++#ifndef copy_from_user_nofault
++#define copy_from_user_nofault(dst, src, size) \
++    probe_kernel_read((dst), (src), (size))
++#endif
++#ifndef copy_to_user_nofault
++#define copy_to_user_nofault(dst, src, size) \
++    probe_kernel_write((dst), (src), (size))
++#endif
+ #endif
+ 
+ #ifndef __NR_clone3
+@@ -45,4 +56,57 @@ static inline void ksu_seccomp_clear_cache(struct seccomp_filter *f, int nr) {}
+ #define selinux_cred(cred) ((struct task_security_struct *)((cred)->security))
+ #endif
+ 
++/* ------------------------------------------------------------------------
++ * kernel_read() / kernel_write() 的 4.9 适配层
++ * ------------------------------------------------------------------------
++ * 这两个函数在 4.14 前后签名完全不同：
++ *
++ *   4.9  (fs/exec.c / fs/splice.c):
++ *        int     kernel_read (struct file *, loff_t offset, char *addr,
++ *                             unsigned long count);
++ *        ssize_t kernel_write(struct file *, const char *buf, size_t count,
++ *                             loff_t pos);            // pos 按值传
++ *
++ *   5.x+ (fs/read_write.c):
++ *        int     kernel_read (struct file *, void *buf, size_t count,
++ *                             loff_t *pos);
++ *        ssize_t kernel_write(struct file *, const void *buf, size_t count,
++ *                             loff_t *pos);            // pos 传指针
++ *
++ * SukiSU v4.1.1 驱动按 5.x 签名调用（第 4 个参数传 `&off`）。在 4.9 上
++ * 这个指针会被当成 offset 的“数值”，对普通文件走 vfs_write() ->
++ * rw_verify_area() 时因 pos 为负且文件不支持无符号偏移而直接返回 -EINVAL，
++ * 于是 allowlist 写盘失败（/data/adb/ksu/.allowlist 恒为 0 字节）、读盘也
++ * 失败，表现为「root 授权重启后丢失」。
++ *
++ * 下面提供两个与 5.x 语义等价的包装函数，驱动内所有调用点均已改为调用
++ * ksu_kernel_read()/ksu_kernel_write()。同时修正 4.9 版本 *不* 会自动推进
++ * 文件位置的问题（4.9 的 kernel_read/write 使用独立的局部 pos，不写回
++ * file->f_pos，因此这里手动累加 *pos，与 5.x 行为保持一致）。
++ *
++ * 注意：本头文件由 Kbuild 以 `-include` 强制注入，先于各 .c 的 #include，
++ * 因此必须自行引入 <linux/fs.h> 才能拿到 struct file / kernel_read 声明。
++ * ------------------------------------------------------------------------ */
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
++#include <linux/fs.h>
++
++static inline int ksu_kernel_read(struct file *file, void *buf, size_t count,
++                                  loff_t *pos)
++{
++    int ret = kernel_read(file, *pos, (char *)buf, count);
++    if (ret > 0)
++        *pos += ret;
++    return ret;
++}
++
++static inline ssize_t ksu_kernel_write(struct file *file, const void *buf,
++                                       size_t count, loff_t *pos)
++{
++    ssize_t ret = kernel_write(file, (const char *)buf, count, *pos);
++    if (ret > 0)
++        *pos += ret;
++    return ret;
++}
++#endif
++
+ #endif
+diff --git a/drivers/kernelsu/ksud.c b/drivers/kernelsu/ksud.c
+index 715f891..c4df69f 100644
+--- a/drivers/kernelsu/ksud.c
++++ b/drivers/kernelsu/ksud.c
+@@ -12,6 +12,7 @@
+ #include <linux/input-event-codes.h>
+ #include <linux/kprobes.h>
+ #include <linux/printk.h>
++#include <linux/preempt.h>
+ #include <linux/types.h>
+ #include <linux/uaccess.h>
+ #include <linux/namei.h>
+@@ -274,6 +275,82 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
+     return 0;
+ }
+ 
++/*
++ * 供 syscall tracepoint (sys_enter, __NR_execve) 调用。
++ *
++ * 原实现是 kprobe 挂 __arm64_sys_execve（见下方 sys_execve_handler_pre），
++ * 但本内核 CONFIG_KPROBES=n，register_kprobe() 恒返回 -ENOSYS，
++ * 该 kprobe 从未注册成功 —— 这意味着：
++ *   (1) 永远检测不到 zygote 启动，on_post_fs_data() 不会被触发，
++ *       ksu_load_allow_list() 从不执行（授权读不回来）；
++ *   (2) 上面的 system_bin_init / app_process 分支形同虚设。
++ * 因此把这段逻辑搬到已验证可用的 sys_enter tracepoint 上。
++ *
++ * filename_user : 指向用户态 execve 第一个参数（路径字符串指针）的指针
++ * __argv        : 用户态 argv 数组（用于识别 "-Xzygote" / "second_stage"）
++ */
++int ksu_handle_execve_ksud(const char __user **filename_user,
++                           const char __user *const __user *__argv)
++{
++    const char __user *fn;
++    unsigned long addr;
++    char path[32];
++    long ret;
++    struct filename filename_in, *filename_p;
++    struct user_arg_ptr argv = { .ptr.native = __argv };
++
++    if (unlikely(!filename_user))
++        return 0;
++
++    /* 廉价前置过滤。本函数只关心两种情况：
++     *   ① init 执行 /system/bin/app_process -Xzygote   （zygote 首次启动）
++     *   ② init 执行 /system/bin/init second_stage       （Android 10+）
++     * 两者的发起者都是 init 本身（pid 1），或 init fork 出的子进程
++     * —— 后者在 execve **之前** comm 仍继承父进程的 "init"。
++     *
++     * 不加这道门，会对全系统**每一次** execve 都尝试读用户态路径字符串。
++     * 实测（v20 首次刷入）每次开机因此产生约 1000 条
++     * "Access filename when execve failed: -14" 噪声，污染 dmesg 环形缓冲
++     * —— 而环形缓冲被冲掉正是早期启动证据查不到的原因，反过来又妨碍排查。
++     * 参照：sucompat.c 有等价的 `ksu_is_allow_uid_for_current()` 前置门。
++     *
++     * ⚠️ v21 的教训：**不能**用 `current_uid().val == 0` 当门。
++     * zygote / zygote64 本身就是 uid 0、comm 为 "main" 的进程，它们的
++     * 每一次 execve 都会因 uid==0 通过这道门并报错 —— v21 实测每次开机
++     * 残余 965 条 "Access filename when execve failed: -14"（pid 561/563
++     * 即 zygote64/zygote）。只有 "pid==1 || comm==init" 才精确命中目标。
++     */
++    if (unlikely(current->pid != 1 && strcmp(current->comm, "init")))
++        return 0;
++
++    addr = untagged_addr((unsigned long)*filename_user);
++    fn = (const char __user *)addr;
++
++    memset(path, 0, sizeof(path));
++    ret = strncpy_from_user_nofault(path, fn, sizeof(path));
++    if (ret < 0 && try_set_access_flag(addr)) {
++        ret = strncpy_from_user_nofault(path, fn, sizeof(path));
++    }
++    if (ret < 0 && preempt_count()) {
++        /* sys_enter tracepoint 由 trace_sys_enter() 在 rcu_read_lock_sched()
++         * 保护下调用，此时 preempt_count() != 0 —— 原子上下文不允许触发页
++         * 错误，因此 strncpy_from_user 对「页面未驻留」的路径会直接返回
++         * -EFAULT。这里临时退出原子上下文把页错误处理掉再恢复。
++         * 与 sucompat.c:ksu_handle_execve_sucompat() 用的是同一套逃生逻辑。 */
++        preempt_enable_no_resched_notrace();
++        ret = strncpy_from_user(path, fn, sizeof(path));
++        preempt_disable_notrace();
++    }
++    if (ret < 0) {
++        pr_warn("Access filename when execve failed: %ld\n", ret);
++        return 0;
++    }
++
++    filename_in.name = path;
++    filename_p = &filename_in;
++    return ksu_handle_execveat_ksud(NULL, &filename_p, &argv, NULL, NULL);
++}
++
+ static ssize_t (*orig_read)(struct file *, char __user *, size_t, loff_t *);
+ static ssize_t (*orig_read_iter)(struct kiocb *, struct iov_iter *);
+ static struct file_operations fops_proxy;
+@@ -374,14 +451,27 @@ static bool is_init_rc(struct file *fp)
+         return false;
+     }
+ 
+-    if (strcmp(dpath, "/system/etc/init/hw/init.rc")) {
++    /*
++     * init.rc 的真实路径随 Android 版本变化，必须同时匹配：
++     *   - Android 10+ : /system/etc/init/hw/init.rc
++     *   - Android 9 及以前（本机 EMUI 9.1 / Android 9）: /init.rc
++     * 上游只判断前者，导致在 Android 9 上 is_init_rc() 恒为 false，
++     * KERNEL_SU_RC 永不注入 -> init 不执行 `ksud post-fs-data`
++     * -> 模块系统整体失效（表现为「刷入的模块重启不生效」）。
++     * 本机实测：/init.rc 存在(36412B)，/system/etc/init/hw/init.rc 不存在。
++     */
++    if (strcmp(dpath, "/system/etc/init/hw/init.rc") &&
++        strcmp(dpath, "/init.rc")) {
+         return false;
+     }
+ 
+     return true;
+ }
+ 
+-static void ksu_handle_sys_read(unsigned int fd)
++/* 供 syscall tracepoint (sys_enter, __NR_read) 调用。
++ * 原实现是 kprobe 挂 __arm64_sys_read，但本内核 CONFIG_KPROBES=n，
++ * register_kprobe() 恒返回 -ENOSYS，钩子永远不会生效。 */
++void ksu_handle_sys_read(unsigned int fd)
+ {
+     struct file *file = fget(fd);
+     if (!file) {
+@@ -611,6 +701,11 @@ static void do_stop_input_hook(struct work_struct *work)
+ 
+ static void stop_init_rc_hook()
+ {
++    static bool init_rc_hook_stopped = false;
++    if (init_rc_hook_stopped) {
++        return;
++    }
++    init_rc_hook_stopped = true;
+     bool ret = schedule_work(&stop_init_rc_hook_work);
+     pr_info("unregister init_rc_hook kprobe: %d!\n", ret);
+ }
+@@ -637,17 +732,33 @@ void ksu_ksud_init()
+ {
+     int ret;
+ 
++    /*
++     * ⚠️ 本内核 CONFIG_KPROBES=n，register_kprobe()/register_kretprobe() 是
++     *    返回 -ENOSYS 的空桩，下面 4 次注册**全部失败**（dmesg 可见
++     *    `KernelSU: reboot kprobe failed: -38` 同源）。此外 arch.h 里的
++     *    SYS_*_SYMBOL 用的是 4.17+ 的 `__arm64_sys_*` 命名，而 4.9 实际符号
++     *    是 `SyS_*`，即便打开 KPROBES 也会因找不到符号返回 -ENOENT。
++     *
++     *    因此 ksud 集成的实际驱动路径已迁移到 syscall tracepoint
++     *    （syscall_hook_manager.c 的 ksu_sys_enter_handler，靠
++     *    CONFIG_FTRACE_SYSCALLS=y，本机已验证可用）：
++     *      - __NR_execve -> ksu_handle_execve_ksud()  （zygote / second_stage）
++     *      - __NR_read   -> ksu_handle_sys_read()     （init.rc 注入）
++     *    这里保留注册调用仅为最小化改动，失败无副作用（unregister 同样为空桩）。
++     */
+     ret = register_kprobe(&execve_kp);
+-    pr_info("ksud: execve_kp: %d\n", ret);
++    pr_info("ksud: execve_kp: %d (kprobe disabled, tracepoint path in use)\n",
++            ret);
+ 
+     ret = register_kprobe(&sys_read_kp);
+-    pr_info("ksud: sys_read_kp: %d\n", ret);
++    pr_info("ksud: sys_read_kp: %d (kprobe disabled, tracepoint path in use)\n",
++            ret);
+ 
+     ret = register_kretprobe(&sys_fstat_kp);
+-    pr_info("ksud: sys_fstat_kp: %d\n", ret);
++    pr_info("ksud: sys_fstat_kp: %d (kprobe disabled)\n", ret);
+ 
+     ret = register_kprobe(&input_event_kp);
+-    pr_info("ksud: input_event_kp: %d\n", ret);
++    pr_info("ksud: input_event_kp: %d (kprobe disabled)\n", ret);
+ 
+     INIT_WORK(&stop_init_rc_hook_work, do_stop_init_rc_hook);
+     INIT_WORK(&stop_execve_hook_work, do_stop_execve_hook);
+diff --git a/drivers/kernelsu/ksud.h b/drivers/kernelsu/ksud.h
+index aba30ae..704a0e3 100644
+--- a/drivers/kernelsu/ksud.h
++++ b/drivers/kernelsu/ksud.h
+@@ -14,6 +14,13 @@ bool ksu_is_safe_mode(void);
+ 
+ int nuke_ext4_sysfs(const char *mnt);
+ 
++/* ---- 由 syscall_hook_manager 的 sys_enter tracepoint 驱动 ----
++ * 原实现挂在 kprobe 上，但本内核 CONFIG_KPROBES=n，kprobe 恒注册失败，
++ * 故改由 tracepoint（CONFIG_FTRACE_SYSCALLS=y，已验证可用）调用。 */
++void ksu_handle_sys_read(unsigned int fd);
++int ksu_handle_execve_ksud(const char __user **filename_user,
++                           const char __user *const __user *__argv);
++
+ extern u32 ksu_file_sid;
+ extern bool ksu_module_mounted;
+ extern bool ksu_boot_completed;
+diff --git a/drivers/kernelsu/sucompat.c b/drivers/kernelsu/sucompat.c
+index f7c91d1..2bd4e01 100644
+--- a/drivers/kernelsu/sucompat.c
++++ b/drivers/kernelsu/sucompat.c
+@@ -150,7 +150,7 @@ int ksu_handle_execve_sucompat(const char __user **filename_user,
+     if (ret < 0 && preempt_count()) {
+         /* This is crazy, but we know what we are doing:
+          * Temporarily exit atomic context to handle page faults, then restore it */
+-        pr_info("Access filename failed, try rescue..\n");
++        pr_debug("Access filename failed, try rescue..\n");
+         preempt_enable_no_resched_notrace();
+         ret = strncpy_from_user(path, fn, sizeof(path));
+         preempt_disable_notrace();
+diff --git a/drivers/kernelsu/supercalls.c b/drivers/kernelsu/supercalls.c
+index d8cb980..f43297f 100644
+--- a/drivers/kernelsu/supercalls.c
++++ b/drivers/kernelsu/supercalls.c
+@@ -11,6 +11,7 @@
+ #include <linux/task_work.h>
+ #include <linux/uaccess.h>
+ #include <linux/version.h>
++#include <linux/vmalloc.h>
+ 
+ #include "supercalls.h"
+ #include "arch.h"
+@@ -558,19 +559,37 @@ static int list_try_umount(void __user *arg)
+     char *output_buf;
+     size_t output_size;
+     size_t offset = 0;
++    const size_t umount_list_max = 2 * 1024 * 1024; /* 2MB hard cap */
+     int ret = 0;
++    bool using_vmalloc = false;
+ 
+     if (copy_from_user(&cmd, arg, sizeof(cmd)))
+         return -EFAULT;
+ 
+     output_size = cmd.buf_size ? cmd.buf_size : 4096;
+ 
++    /* Clamp instead of rejecting: a caller (e.g. the manager app) may pass a
++     * large buf_size. Requesting it verbatim would ask the page allocator for
++     * an order-11+ contiguous block, tripping the buddy allocator's
++     * CONFIG_FORCE_MAX_ZONEORDER=11 WARNING and dumping a huge stack trace.
++     * A mount-point listing never needs more than a few KB, so truncating the
++     * allocation is harmless: we only ever copy back `offset` bytes, and
++     * offset <= output_size <= cmd.buf_size, so the user buffer never overflows. */
++    if (output_size > umount_list_max)
++        output_size = umount_list_max;
++
+     if (!cmd.arg || output_size == 0)
+         return -EINVAL;
+ 
+-    output_buf = kzalloc(output_size, GFP_KERNEL);
+-    if (!output_buf)
+-        return -ENOMEM;
++    /* __GFP_NOWARN: a failed large-order allocation must stay silent.
++     * vzalloc fallback avoids the contiguous-order requirement entirely. */
++    output_buf = kzalloc(output_size, GFP_KERNEL | __GFP_NOWARN);
++    if (!output_buf) {
++        output_buf = vzalloc(output_size);
++        if (!output_buf)
++            return -ENOMEM;
++        using_vmalloc = true;
++    }
+ 
+     offset += snprintf(output_buf + offset, output_size - offset,
+                        "Mount Point\tFlags\n");
+@@ -598,7 +617,10 @@ static int list_try_umount(void __user *arg)
+             ret = -EFAULT;
+     }
+ 
+-    kfree(output_buf);
++    if (using_vmalloc)
++        vfree(output_buf);
++    else
++        kfree(output_buf);
+     return ret;
+ }
+ 
+diff --git a/drivers/kernelsu/syscall_hook_manager.c b/drivers/kernelsu/syscall_hook_manager.c
+index 36d9a7b..3c82441 100644
+--- a/drivers/kernelsu/syscall_hook_manager.c
++++ b/drivers/kernelsu/syscall_hook_manager.c
+@@ -1,6 +1,7 @@
+ #include "linux/compiler.h"
+ #include "linux/cred.h"
+ #include "linux/printk.h"
++#include <linux/preempt.h>
+ #include "selinux/selinux.h"
+ #include <linux/spinlock.h>
+ #include <linux/kprobes.h>
+@@ -239,6 +240,7 @@ static inline bool check_syscall_fastpath(int nr)
+     case __NR_newfstatat:
+     case __NR_faccessat:
+     case __NR_execve:
++    case __NR_read: /* ksud: 需要给 init 读到的 init.rc 尾部追加 KERNEL_SU_RC */
+     case __NR_setresuid:
+     case __NR_clone:
+     case __NR_clone3:
+@@ -268,6 +270,16 @@ int ksu_handle_init_mark_tracker(const char __user **filename_user)
+         ret = strncpy_from_user_nofault(path, fn, sizeof(path));
+         pr_info("ksu_handle_init_mark_tracker: %ld\n", ret);
+     }
++    if (ret < 0 && preempt_count()) {
++        /* sys_enter tracepoint 在 rcu_read_lock_sched() 保护下执行，原子上下
++         * 文无法处理页错误。init 执行 /data/adb/ksud 时若读不到路径，
++         * escape_to_root_for_init() 不会被调用，ksud 拿不到 root，
++         * 整个模块挂载链路就会静默失败 —— 所以这里必须兜住。
++         * 与 sucompat.c:ksu_handle_execve_sucompat() 同一套逃生逻辑。 */
++        preempt_enable_no_resched_notrace();
++        ret = strncpy_from_user(path, fn, sizeof(path));
++        preempt_disable_notrace();
++    }
+ 
+     if (unlikely(strcmp(path, KSUD_PATH) == 0)) {
+         pr_info("hook_manager: escape to root for init executing ksud: %d\n",
+@@ -324,10 +336,27 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
+                 } else {
+                     ksu_handle_execve_sucompat(filename_user, NULL, NULL, NULL);
+                 }
++                // ksud 集成：识别 zygote / init second_stage。
++                // 上游走 kprobe(__arm64_sys_execve)，本内核 CONFIG_KPROBES=n
++                // 恒注册失败，故改由本 tracepoint 驱动。
++                ksu_handle_execve_ksud(
++                    filename_user,
++                    (const char __user *const __user *)PT_REGS_PARM2(regs));
+                 return;
+             }
+         }
+ 
++        // Handle read：ksud 需要把 KERNEL_SU_RC 追加到 init 读到的 init.rc
++        // 之后，init 才会执行 `ksud post-fs-data`（模块挂载的唯一入口）。
++        // 只有 comm=="init" 才需要，先做一次廉价过滤，避免拖慢热路径。
++        if (id == __NR_read) {
++            if (unlikely(current->comm[0] == 'i' &&
++                         !strcmp(current->comm, "init"))) {
++                ksu_handle_sys_read((unsigned int)PT_REGS_PARM1(regs));
++            }
++            return;
++        }
++
+         // Handle setresuid
+         if (id == __NR_setresuid) {
+             uid_t ruid = (uid_t)PT_REGS_PARM1(regs);
+diff --git a/drivers/kernelsu/throne_tracker.c b/drivers/kernelsu/throne_tracker.c
+index 9273ca7..77ad2ab 100644
+--- a/drivers/kernelsu/throne_tracker.c
++++ b/drivers/kernelsu/throne_tracker.c
+@@ -272,13 +272,13 @@ void track_throne(bool prune_only)
+     loff_t line_start = 0;
+     char buf[KSU_MAX_PACKAGE_NAME];
+     for (;;) {
+-        ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
++        ssize_t count = ksu_kernel_read(fp, &chr, sizeof(chr), &pos);
+         if (count != sizeof(chr))
+             break;
+         if (chr != '\n')
+             continue;
+ 
+-        count = kernel_read(fp, buf, sizeof(buf), &line_start);
++        count = ksu_kernel_read(fp, buf, sizeof(buf), &line_start);
+ 
+         struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_ATOMIC);
+         if (!data) {
