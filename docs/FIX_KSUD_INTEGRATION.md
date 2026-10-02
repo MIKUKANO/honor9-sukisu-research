@@ -822,7 +822,7 @@ su -c 'ps -A | grep -E "lspd|zygisk"'                                 # 应有�
 ## 六、复现步骤（环境机）
 
 ```bash
-# 1) 基线：源码 + sukisu_all_patches.diff（见 BUILD.md）
+# 1) 基线：源码 + honor9_all_patches.diff（见 BUILD.md）
 cd /root/kernel_src_gh
 
 # 2) 应用 v19–v23 的修复（9 个文件，含 sucompat.c / supercalls.c）

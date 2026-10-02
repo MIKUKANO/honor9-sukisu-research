@@ -68,8 +68,8 @@ sudo -E bash scripts/vm_setup.sh
 ```
 
 该脚本会依次完成：系统依赖 → 内核源码（盘古）→ 工具链 → SukiSU 驱动 → defconfig → 补丁。
-**注意**：脚本假定 `sukisu_all_patches.diff` 与 `ksu_compat_49.h` 位于 `$WORK` 目录下，
-前者是本项目全部内核改动的完整 diff，需按 `docs/PATCHES.md` 自行生成或逐条应用。
+**注意**：脚本假定 `honor9_all_patches.diff` 与 `ksu_compat_49.h` 位于 `$WORK` 目录下，
+前者是本项目全部内核改动的完整 diff（见 `patches/README.md`），也可按 `docs/PATCHES.md` 逐条应用。
 
 ---
 

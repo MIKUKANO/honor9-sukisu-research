@@ -7,6 +7,7 @@
 set -e
 NAME=${NAME:-SukiSU}              # uname 后缀 (CONFIG_LOCALVERSION)，留空则用盘古原版命名
 WORK=${WORK:-/root}
+PATCH=${PATCH:-honor9_all_patches.diff}   # 完整内核补丁 (放在 $WORK 下; 亦可用绝对路径)
 
 echo "=== [1/8] 系统依赖 (清华源) ==="
 sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|g' /etc/apt/sources.list 2>/dev/null || true
@@ -58,12 +59,17 @@ sed -i 's/^CONFIG_HUAWEI_HIDESYMS=y/# CONFIG_HUAWEI_HIDESYMS is not set/; s/^CON
   arch/arm64/configs/Pangu_SukiSU_defconfig
 printf '\n# SukiSU integration\nCONFIG_KSU=y\nCONFIG_KSU_MANUAL_SU=y\nCONFIG_KSU_DEBUG=y\n# CONFIG_KPM is not set\nCONFIG_FTRACE_SYSCALLS=y\nCONFIG_KALLSYMS=y\nCONFIG_KALLSYMS_ALL=y\nCONFIG_SECURITY_SELINUX_DEVELOP=y\nCONFIG_LOCALVERSION="-%s"\n' "$NAME" >> arch/arm64/configs/Pangu_SukiSU_defconfig
 
-echo "=== [7/8] 应用全部内核补丁 (patches/sukisu_all_patches.diff) ==="
-# 本脚本假定 diff 文件在 $WORK/sukisu_all_patches.diff
+echo "=== [7/8] 应用完整内核补丁 (patches/${PATCH##*/}) ==="
+# 补丁文件默认放在 $WORK 下 (可从仓库 patches/ 复制或改 PATCH= 指向)
 # 注意: diff 相对源码根生成, --dir-diff 语义, 直接 git apply:
-git apply --stat "$WORK/sukisu_all_patches.diff" | tail -3 || true
-git apply "$WORK/sukisu_all_patches.diff" || echo "部分 hunks 已应用过, 跳过失败项属正常"
-# 若上一步报冲突, 说明源码版本不同, 需按 PATCHES.md 手工对应
+[ -f "$PATCH" ] || PATCH="$WORK/${PATCH##*/}"
+if [ -f "$PATCH" ]; then
+  git -c core.autocrlf=false apply --stat "$PATCH" | tail -3 || true
+  git -c core.autocrlf=false apply "$PATCH" || echo "部分 hunks 已应用过, 跳过失败项属正常"
+  # 若冲突, 说明源码版本不同, 需按 PATCHES.md 手工对应
+else
+  echo "未找到补丁 $PATCH —— 跳过。请把 honor9_all_patches.diff 放到 $WORK, 或 export PATCH=<绝对路径>"
+fi
 
 echo "=== [8/8] 完成 ==="
 echo "localversion: -$NAME"

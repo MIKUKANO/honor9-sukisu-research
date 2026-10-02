@@ -89,6 +89,41 @@ Android SDK platform-tools（adb / fastboot）。
 
 ---
 
+## ⬇️ 下载现成镜像（不想自己编译的话）
+
+最新可刷镜像发布在 **GitHub Releases**：
+
+> **👉 [Releases · v32](https://github.com/MIKUKANO/honor9-sukisu-research/releases/tag/v32)**
+
+| 文件 | 大小 | 说明 |
+|---|---|---|
+| `kernel_sukisu_v32.img` | 15,177,728 B | 可直接 `dd` 写入 `kernel` 分区 |
+
+```
+MD5    4290e34d5c14f1c2b04b331323dd0bf3
+SHA256 352fe4387df0233817fbb2d62276061bb462a1120609c7da2798da31930586aa
+```
+
+一行下载（可选）：
+
+```bash
+curl -L -O https://github.com/MIKUKANO/honor9-sukisu-research/releases/download/v32/kernel_sukisu_v32.img
+```
+
+⚠️ **务必先核对校验和再刷**。刷入教程（含备份、三种刷法、读回校验、回滚、变砖救援）
+见 **[`docs/FLASH.md`](docs/FLASH.md)**；一键脚本 `scripts/flash_phone.ps1`。
+
+> 📝 **关于镜像里的 `uname` 名字**：版本串是 `4.9.148-SukiSU`（中性后缀）。
+> 早期构建曾用过个人化的长后缀，**v32 起已全部去掉** ——
+> 仓库里的配置、脚本、补丁 diff 和这个二进制里都不再包含任何个人标识。
+> 你完全可以自己改 `CONFIG_LOCALVERSION` 重新编译，不影响功能。
+>
+> ⚠️ 但如果**你自己重新编译**，注意把构建标识也一并改掉：
+> 内核默认会用编译机的 `用户@主机名`（本项目编译机是 `root@x`），
+> 若不想暴露，编译前 `export KBUILD_BUILD_USER=<你想要的>` / `KBUILD_BUILD_HOST=<...>`。
+
+---
+
 ## 🔧 内核版本演进
 
 > ⭐ 判断设备当前跑哪个版本，看 `uname -a` 的 **`#N` + 构建时间**
@@ -182,12 +217,14 @@ honor9-sukisu-research/
 │   ├── DEVICE_NOTES.md           # 设备/分区/环境摸底
 │   ├── BUILD.md                  # 编译环境搭建与构建流程
 │   ├── TOOLS.md                  # ⭐ 工具链与外部依赖清单（版本/来源/许可/是否分发）
+│   ├── FLASH.md                  # ⭐ 刷入指南（下载校验/备份/三种刷法/读回/回滚/救援）
 │   ├── FLASH_AND_RESCUE.md       # 刷入、回滚、救援（含 fastboot 驱动）
 │   ├── HEALTH_CHECK.md           # 健康检查与逐项验证记录
 │   ├── PATCHES.md                # 补丁全集与逐条根因分析（最核心，70KB）
 │   └── FIX_KSUD_INTEGRATION.md   # ksud 集成问题的完整排查记录
 ├── patches/
 │   ├── README.md                 # 各补丁用途说明
+│   ├── honor9_all_patches.diff   # ⭐ 完整内核补丁（191 文件 / 23,251 行），复现权威依据
 │   ├── SUSFS_ABI_NOTES.md        # SUSFS ABI 兼容笔记（双布局、err 偏移等）
 │   ├── Pangu_SukiSU_defconfig    # 最终内核配置（基于盘古 Pangu_Kirin960_defconfig）
 │   ├── ksud_integration_fix.patch

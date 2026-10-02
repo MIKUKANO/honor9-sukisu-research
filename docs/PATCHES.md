@@ -1,6 +1,6 @@
 # 补丁清单与原理（PATCHES.md）
 
-完整机器可读差异：`patches/sukisu_all_patches.diff`（git diff，相对盘古 master 2025-10 版）。
+完整机器可读差异：`patches/honor9_all_patches.diff`（git diff，191 文件 / 23,251 行，相对盘古 master `b15bb35c7`）。
 本文件按功能分组解释每处修改的原因。行号以交付时源码为准。
 
 ## A. SukiSU 超级调用通道（核心，"不支持"的根因）

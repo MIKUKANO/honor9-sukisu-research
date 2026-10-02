@@ -44,10 +44,15 @@
 
 ### 1.2 特别说明
 
-- 本仓库**不包含**上述任何项目的源码或二进制产物，仅包含自行编写的**文档、脚本与补丁**。
+- 本仓库**不包含**上述任何项目的**完整源码树**或**预编译二进制**，只包含自行编写的
+  **文档、脚本与补丁**。
+- ⚠️ **例外（因 GPL 合规而随附）**：`patches/honor9_all_patches.diff` 中包含本项目**修改后的
+  SUSFS 内核源码**（`fs/susfs.c`、`fs/sus_su.c`、`include/linux/susfs.h`、`susfs_def.h`、`sus_su.h`）。
+  这些文件**源自 SUSFS 上游（GPL-3.0）**，版权归 **simonpunk / ShirkNeko** 所有。
+  随附原因：本项目在 [Releases](../../releases) 分发编译好的内核二进制，
+  按 GPL 必须能取得完整对应源码。**本仓库不对这些文件主张任何版权。**
 - **全部外部依赖的版本、获取方式与许可，见 [`docs/TOOLS.md`](docs/TOOLS.md)。**
 - `docs/` 与 `patches/SUSFS_ABI_NOTES.md` 中引用的代码片段，仅用于**技术说明**，版权归原项目所有。
-- SUSFS 的 `kernel_patches/` 与 `ksu_susfs` 工具**未**随本仓库分发，请从上游获取。
 - 如果本仓库的任何内容侵犯了你的权益，请提 Issue，作者会**立即**处理。
 
 ---
@@ -108,7 +113,8 @@ Shamiko、jadx 等**全部由各自的人类作者开发**，AI 在本项目中�
 |---|---|---|
 | 文档（`*.md`） | **MIT** | 见 `LICENSE` |
 | 脚本（`scripts/`） | **MIT** | 见 `LICENSE` |
-| **内核补丁**（`patches/*.patch`、`patches/*.h`、`patches/Pangu_SukiSU_defconfig`） | **GPL-2.0** | Linux 内核衍生作品，受 GPL-2.0 约束；`LICENSE` 中的 MIT 条款**不适用**于这些文件 |
+| **内核补丁**（`patches/*.patch`、`patches/*.h`、`patches/*.diff`、`patches/Pangu_SukiSU_defconfig`） | **GPL-2.0** | Linux 内核衍生作品；`LICENSE` 中的 MIT 条款**不适用**于这些文件 |
+| ↳ 其中源自 **SUSFS** 的部分（`fs/susfs.c`、`fs/sus_su.c`、`include/linux/susfs*.h`） | **GPL-3.0** | 版权归 **simonpunk / ShirkNeko**；因 GPL 合规随附，本仓库不主张版权 |
 | 引用的第三方项目 | 归各自作者所有 | 详见本文第一节 |
 
 **为什么 `LICENSE` 里不写这条**：GitHub 的许可证识别器要求 `LICENSE` 为纯模板文本，

@@ -100,16 +100,17 @@ cp arch/arm64/configs/Pangu_Kirin960_defconfig arch/arm64/configs/Pangu_SukiSU_d
 
 ```bash
 cd kernel_src_gh
-git apply sukisu_all_patches.diff
+git -c core.autocrlf=false apply ../patches/honor9_all_patches.diff
 ```
 
-该 diff 包含全部修改（12,546 行）：reboot 超级调用钩子、SukiSU 驱动 4.9 兼容 shim、全树 -Werror 清理、版本串等。逐项说明见 PATCHES.md。
-若目标源码与盘古 master 有差异导致个别 hunk 冲突，按 `git apply --reject` 生成 .rej 手工对齐。
+该 diff 是**完整对应源码**（191 文件 / 23,251 行，相对盘古 master `b15bb35c7`）：reboot 超级调用钩子、
+SukiSU 驱动 4.9 兼容 shim、SUSFS 移植、全树 -Werror 清理、defconfig 与版本串等全部改动。
+逐项说明见 PATCHES.md。若目标源码与盘古 master 有差异导致个别 hunk 冲突，按 `git apply --reject` 生成 .rej 手工对齐。
 
 > ⚠️ **v25 起内核不再强制 SELinux Permissive**（`ZCODE_FORCE_PERMISSIVE` 已摘除）；
-> **v26 起编入 SUSFS**；**v27–v29 补齐三项能力并修 5 个缺陷**。
-> 若 `sukisu_all_patches.diff` 是早期版本，请以 `PATCHES.md` §L / §M 与
-> `patches/susfs/v29_sources/` 为准。
+> **v26 起编入 SUSFS**；**v27–v29 补齐三项能力并修 5 个缺陷**；**v31 改 SUSFS 版本号修 AVC 开关**。
+> ⚠️ **Windows 上必须加 `-c core.autocrlf=false`**，否则 git 会把补丁的 LF 转成 CRLF，
+> 应用结果与目标逐字节不一致。
 
 ### 6.5 应用 ksud 集成修复补丁（**必做**）
 

@@ -4,6 +4,7 @@
 # shell 脚本必须 LF（否则设备上 / Linux 下无法执行）
 *.sh text eol=lf
 *.patch text eol=lf
+*.diff text eol=lf
 *.h text eol=lf
 *.py text eol=lf
 Pangu_SukiSU_defconfig text eol=lf
