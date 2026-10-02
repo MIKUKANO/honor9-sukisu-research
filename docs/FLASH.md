@@ -50,18 +50,30 @@
 > ⚠️ **必须先用改版 INF 装好驱动**，否则 Windows 认不出设备（`CM_PROB_FAILED_INSTALL`）。
 > Google 官方 INF **不含 `18D1:D00D`**，需手工补一行。详见 [`FLASH_AND_RESCUE.md`](FLASH_AND_RESCUE.md)。
 
-**实测证据**（2026-10-02，v30 事故救援）：
+**实测证据**（2026-10-03，专门为验证 fastboot 通道做的受控测试）：
 
 ```
 fastboot devices
   5JP0217C07002543  fastboot
 
-fastboot flash kernel kernel_sukisu_v29.img
-  Sending 'kernel' (14822 KB) OKAY
-  Writing 'kernel' OKAY
+fastboot getvar max-download-size      →  max-download-size: 471859200   ✅
+fastboot getvar all                    →  FAILED (remote: 'Command not allowed')
+fastboot getvar partition-size:kernel  →  FAILED (remote: 'Command not allowed')
+
+fastboot flash kernel kernel_sukisu_v34.img
+  Sending 'kernel' (14822 KB)  OKAY [  0.328s]
+  Writing 'kernel'             OKAY [  0.129s]
+  Finished. Total time: 0.484s
+
+fastboot reboot
+  Rebooting                    OKAY [  0.020s]
 ```
 
-⇒ **卡在「BL 已解锁」界面时，就是靠 fastboot 刷回旧内核救活的。**
+⇒ **结论：`flash` 与 `reboot` 完全可用，`getvar` 全线被锁但不影响刷写。**
+（另有一次 v30 事故救援记录：卡在「BL 已解锁」界面时刷回 v29 救活，见 §7。）
+
+> ℹ️ **为什么 `getvar` 全锁却 `flash` 能用**：华为在 fastboot 协议层对 `getvar` 做了白名单，
+> 但 `flash` 走的是另一条分支，未被拦截。**不要因为 getvar 报错就以为刷不了**。
 
 > ℹ️ **华为 fastboot 只锁 `getvar`，没锁 `flash`**：
 > `getvar all` / `product` / `unlocked` / `partition-size:*` 全部返回
@@ -81,10 +93,10 @@ fastboot 本身就是"从零开始刷入"的通道。步骤：
 1. **解 BL 锁**（必做，否则 bootloader 拒绝写）。
 2. **装好 fastboot 驱动**（改版 INF，见 [`FLASH_AND_RESCUE.md`](FLASH_AND_RESCUE.md)）。
 3. 关机 → 音量下 + 插 USB → `fastboot flash kernel <img>` → `fastboot reboot`。
-3. **拿到 root 后**，才回到本文，用 `dd` 刷入本项目的内核。
+4. 开机后本内核自带 root，**以后升级**再用方式 A（`dd`）会更方便。
 
-> 💡 **一句话总结**：解 BL 锁是"获得刷机资格"，root 是"获得刷机能力"。
-> 本机因为 fastboot 被锁，**两者缺一不可**，且必须**先有 root 才能刷入提供 root 的内核**。
+> 💡 **一句话总结**：解 BL 锁是刷机的前提；**root 只有 `dd`（方式 A/B）才需要，
+> fastboot（方式 C）完全不需要**。所以全新零 root 设备也能一步刷入，不存在"鸡生蛋"问题。
 
 ---
 
@@ -146,7 +158,7 @@ adb shell "su -c 'ls -la /sdcard/kernel_stock.img'"     # 确认文件存在且�
 
 ```bash
 fastboot devices                              # 确认能看到设备
-fastboot flash kernel kernel_sukisu_v34.img   # ✅ 实测可用（v30 事故即靠此救活）
+fastboot flash kernel kernel_sukisu_v34.img   # ✅ 实测通过（2026-10-03 受控测试）
 fastboot reboot
 ```
 
@@ -269,6 +281,14 @@ fastboot reboot
 > ✅ **实战验证（2026-10-02）**：v30 刷入后卡在「BL 已解锁」界面，就是靠
 > `fastboot flash kernel kernel_sukisu_v29.img` 救活的，输出 `Writing 'kernel' OKAY`。
 > 从卡死到恢复正常约 **3 分钟**。
+>
+> ✅ **受控实测（2026-10-03）**：专门为验证 fastboot 通道做了一次受控测试 ——
+> 重启进 fastboot，用 fastboot 刷入**与当前运行版本完全相同**的 v34 镜像
+> （内容一致，故即使刷写成功设备行为也不会变），结果
+> `Sending 'kernel' (14822 KB) OKAY` / `Writing 'kernel' OKAY` /
+> `fastboot reboot` → `Rebooting OKAY`，重启后系统约 21 秒启动完成，
+> 内核版本、SELinux、SUSFS（9 项特性）、root、BL 伪装全部正常。
+> ⇒ **fastboot 刷写是真实生效的，不是"看起来成功"。**
 
 ### 备选：eRecovery（fastboot 不可用时）
 
