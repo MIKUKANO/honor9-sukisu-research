@@ -101,11 +101,19 @@ Shamiko、jadx 等**全部由各自的人类作者开发**，AI 在本项目中�
 
 ## 三、许可与版权
 
-| 内容 | 许可 |
-|---|---|
-| 文档（`*.md`）与脚本（`scripts/`） | **MIT**（见 `LICENSE`） |
-| 内核补丁（`patches/*.patch`、`*.h`、`*_defconfig`） | **GPL-2.0**（Linux 内核衍生作品） |
-| 引用的第三方项目 | 归各自作者所有，详见本文第一节 |
+> ⚠️ **本仓库是混合许可的**：`LICENSE` 文件中的 MIT 条款**仅覆盖文档与脚本**，
+> 不覆盖 `patches/` 目录下的内核补丁。请按下表区分使用。
+
+| 内容 | 许可 | 说明 |
+|---|---|---|
+| 文档（`*.md`） | **MIT** | 见 `LICENSE` |
+| 脚本（`scripts/`） | **MIT** | 见 `LICENSE` |
+| **内核补丁**（`patches/*.patch`、`patches/*.h`、`patches/Pangu_SukiSU_defconfig`） | **GPL-2.0** | Linux 内核衍生作品，受 GPL-2.0 约束；`LICENSE` 中的 MIT 条款**不适用**于这些文件 |
+| 引用的第三方项目 | 归各自作者所有 | 详见本文第一节 |
+
+**为什么 `LICENSE` 里不写这条**：GitHub 的许可证识别器要求 `LICENSE` 为纯模板文本，
+加入额外说明会导致识别失败（显示为 "Other"）。因此本仓库采用通行做法 ——
+`LICENSE` 放纯净 MIT，**目录级例外在 `NOTICE.md`（本文件）声明**。
 
 ---
 

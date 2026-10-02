@@ -19,14 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-注意 / Note:
-
-本许可仅覆盖本仓库中的**文档（*.md）与脚本（scripts/）**。
-
-patches/ 目录下的内核补丁（*.patch、*.h、*_defconfig）属于 Linux 内核的衍生作品，
-遵循 GNU General Public License v2.0（GPL-2.0）。
-
-引用的第三方项目版权归各自作者所有，详见 NOTICE.md。
