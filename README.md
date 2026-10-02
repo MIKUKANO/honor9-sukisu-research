@@ -74,7 +74,7 @@ Android SDK platform-tools（adb / fastboot）。
 | 内核基线 | **盘古内核**（maimaiguanfan）· Linux **4.9.148** 华为魔改（非 GKI） |
 | 集成的 root | **SukiSU Ultra v4.1.1**（`com.sukisu.ultra`，versionCode 40496） |
 | 编入的隐藏 | **SUSFS**，`show enabled_features` 报告 **9 项全开** |
-| 最终版本 | `4.9.148-非酋&大肥鱼自制max版`，内核 `#32`，构建者 `MIKUKANO@ATRI` |
+| 最终版本 | `4.9.148-SukiSU`，内核 `#32`，构建于 2026-10-02 04:58:07 UTC |
 | 编译状态 | `BUILD_EXIT=0`、`error` **0**、`undefined reference` **0** |
 | 刷写方式 | `dd` 写 `kernel` 分区（**无 boot/ramdisk**，`RAMDISK_SZ=0`），回读 sha256 校验一致 |
 | 救援通道 | eRecovery（音量上）+ **fastboot 已打通**（音量下 + 插 USB） |
@@ -93,6 +93,11 @@ Android SDK platform-tools（adb / fastboot）。
 
 > ⭐ 判断设备当前跑哪个版本，看 `uname -a` 的 **`#N` + 构建时间**
 > —— 因为各版本的 `localversion` 完全相同，只看 `uname -r` 无法区分。
+>
+> 📝 **关于 `localversion`**：本仓库统一使用 `CONFIG_LOCALVERSION="-SukiSU"`
+> （uname 显示 `4.9.148-SukiSU`）。**你可以随意改成自己喜欢的名字** —— 它只影响 `uname -r`
+> 的显示，不影响任何功能。早期构建曾用过个人自定义后缀，本文档中的历史日志摘录
+> 已将其隐去为 `4.9.148-<自定义后缀>`。
 
 | 版本 | 内容 | 标识 |
 |---|---|---|
@@ -219,7 +224,9 @@ sudo -E bash scripts/build_and_pack.sh  # 编译 + 打包 → $SRC/kernel_sukisu
 3. **集成 SukiSU Ultra**：按上游文档接入驱动源码，或参考 `docs/BUILD.md`。
 4. **打 SUSFS 补丁**：参考 `patches/SUSFS_ABI_NOTES.md` 与 `docs/PATCHES.md`。
    ⚠️ 注意本文档 §2 的版本号陷阱。
-5. **编译打包**：`scripts/build_and_pack.sh`（注意 `CONFIG_LOCALVERSION` 含 `&` 时需改 `Makefile` 的 `filechk_utsrelease.h`）。
+5. **编译打包**：`scripts/build_and_pack.sh`。
+   ⚠️ 若你把 `CONFIG_LOCALVERSION` 改成含 shell 元字符（如 `&`）的名字，需同步改 `Makefile` 的
+   `filechk_utsrelease.h`，否则编译报 `Error 127`（详见 `docs/PATCHES.md` §M.2）。
 6. **刷入**：`scripts/flash_phone.ps1`（Windows）或 `scripts/flash_v31.sh`（设备侧）
    —— `dd` → `sync` → 回读 → sha256 比对。
    ⚠️ **回读必须按镜像长度截断**再比对，多出的半页是上一个内核的残留。

@@ -119,13 +119,14 @@ HISI_RO_LSM_HOOKS 等；本项目额外关闭：
 
 ## H. 标识与版本
 
-- `Makefile`：`export KBUILD_BUILD_USER/HOST`（/proc/version 显示 MIKUKANO@ATRI）；
-- `arch/arm64/configs/Pangu_SukiSU_defconfig`：`CONFIG_LOCALVERSION="-非酋&大肥鱼自制max版"`
-  （uname → `4.9.148-非酋&大肥鱼自制max版`）；
+- `Makefile`：`export KBUILD_BUILD_USER/HOST`（/proc/version 显示 `用户@主机名`，不设则用编译机的登录名）；
+- `arch/arm64/configs/Pangu_SukiSU_defconfig`：`CONFIG_LOCALVERSION="-SukiSU"`
+  （uname → `4.9.148-SukiSU`）；
   ⚠️ `CONFIG_LOCALVERSION` **不带前导 `-`**，由 kbuild 自动补；
-  值里含 `&` ⇒ **必须**同时修 `Makefile` 的 `filechk_utsrelease.h`（见 §M.2）；
+  ⚠️ 若把值改成含 shell 元字符（如 `&`）的名字 ⇒ **必须**同时修 `Makefile` 的
+  `filechk_utsrelease.h`（见 §M.2；本项目早期用过的自定义名恰好含 `&`，踩过这个坑）；
 - `drivers/kernelsu/Kbuild`：`KSU_VERSION := 40496`、
-  `KSU_VERSION_FULL := v4.1.1-非酋自制版`（管理器显示）。
+  `KSU_VERSION_FULL := v4.1.1-SukiSU`（管理器显示）。
   版本号公式 = 40000 + 提交数 - 2815，v4.1.1 对应 40496（与官方管理器 versionCode 一致）。
 - SUSFS 对外版本号保持 **`v2.3.0`**（管理器据此拼工具名，见 `SUSFS_ABI_NOTES.md` §1）。
 
@@ -842,12 +843,12 @@ v27 实现那三项时，正是**先反汇编确认了各自的 `err` 偏移**�
 
 效果：`ksud susfs features` 由 **7 项 → 9 项**。
 
-### M.2 ⭐ 编译期陷阱：localversion 里的 `&`
+### M.2 ⭐ 编译期陷阱：localversion 里的 shell 元字符
 
-`CONFIG_LOCALVERSION="-非酋&大肥鱼自制max版"` 让首次编译直接失败：
+早期构建用的自定义 localversion 里含 `&`，让首次编译直接失败：
 
 ```
-/bin/sh: 1: 大肥鱼自制max版": not found
+/bin/sh: 1: <后缀后半段>": not found
 Makefile:1374: recipe for target 'include/generated/utsrelease.h' failed
 Error 127
 ```
@@ -859,7 +860,7 @@ Error 127
 ```
 
 `$(KERNELRELEASE)` **未加引号** → 值里的 `&` 被 `/bin/sh` 当成**后台运算符**，
-`echo` 只吃到 `非酋`，剩下的被当命令执行。
+`echo` 只吃到第一个词，剩下的被当命令执行。
 
 **修法**（`scripts/fix_makefile_utsrelease.py`，幂等）：
 

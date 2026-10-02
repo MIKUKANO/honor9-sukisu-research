@@ -9,9 +9,9 @@ set -e
 SRC=${SRC:-/root/kernel_src_gh}
 TC=${TC:-/root/toolchain/bin/aarch64-none-linux-gnu-}
 DEFCONFIG=${DEFCONFIG:-Pangu_SukiSU_defconfig}
-# 构建标识 (显示在 /proc/version)
-export KBUILD_BUILD_USER=${KBUILD_BUILD_USER:-MIKUKANO}
-export KBUILD_BUILD_HOST=${KBUILD_BUILD_HOST:-ATRI}
+# 构建标识（显示在 /proc/version 的 "Linux version ... (user@host)"）
+# 不设置时，内核会使用编译机的 登录用户@主机名。如需自定义，先 export 再运行：
+#   export KBUILD_BUILD_USER=xxx KBUILD_BUILD_HOST=yyy
 JOBS=${JOBS:-$(nproc)}
 # 荣耀9 官方 boot 参数 (cmdline 中 selinux 保持 permissive, 内核已强制)
 CMDLINE='loglevel=4 initcall_debug=n page_tracker=on slub_min_objects=16 unmovable_isolate1=2:192M,3:224M,4:256M printktimer=0xfff0a000,0x534,0x538 androidboot.selinux=permissive buildvariant=user'

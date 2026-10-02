@@ -83,7 +83,7 @@ HISI_SELINUX_EBITMAP_RO/PROT、HKIP 等。表现为：root 上下文无法读
 - 管理器识别 = setuid 钩子比对 appid（10189，编译期预设）→ task_work 注入
   `anon_inode:[ksu_driver]` fd → 管理器扫描自身 fd 表后 ioctl 通信；
 - su 请求 = sucompat execve 拦截（优先于任何 su 二进制），permissive 下直接可用；
-- 版本串 = `v4.1.1-非酋自制版`（version 40496 = 40000+提交数-2815）。
+- 版本串 = `v4.1.1-SukiSU`（version 40496 = 40000+提交数-2815）。
 
 ### sys_enter tracepoint 的三个硬约束（踩过坑，务必记住）
 

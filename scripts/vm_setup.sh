@@ -5,9 +5,7 @@
 # 内容: 依赖 → 国内源 → 内核源码 → gcc10.3 工具链 → SukiSU v4.1.1 驱动集成 → 补丁应用
 # =====================================================================
 set -e
-NAME=${NAME:-非酋自制版}          # uname 后缀 (CONFIG_LOCALVERSION)
-BUSER=${BUSER:-MIKUKANO}          # /proc/version 构建者
-BHOST=${BHOST:-ATRI}              # /proc/version 主机名
+NAME=${NAME:-SukiSU}              # uname 后缀 (CONFIG_LOCALVERSION)，留空则用盘古原版命名
 WORK=${WORK:-/root}
 
 echo "=== [1/8] 系统依赖 (清华源) ==="
@@ -68,5 +66,7 @@ git apply "$WORK/sukisu_all_patches.diff" || echo "部分 hunks 已应用过, �
 # 若上一步报冲突, 说明源码版本不同, 需按 PATCHES.md 手工对应
 
 echo "=== [8/8] 完成 ==="
-echo "构建者: $BUSER@$BHOST  (如需修改请 export KBUILD_BUILD_USER/HOST 后重新编译)"
+echo "localversion: -$NAME"
+echo "构建标识 (user@host): 未设置则使用编译机的 登录用户@主机名"
+echo "  如需自定义: export KBUILD_BUILD_USER=xxx KBUILD_BUILD_HOST=yyy 后重新编译"
 echo "下一步: bash build_and_pack.sh"

@@ -71,7 +71,7 @@ cp -r sukisu/kernel kernel_src_gh/drivers/kernelsu
 
 # 4.3 驱动版本钉定（与管理器 versionCode 一致）
 # drivers/kernelsu/Kbuild 中 KSU_VERSION := 13000 的回退分支改为 40496，
-# KSU_VERSION_FULL := v4.1.1-非酋自制版
+# KSU_VERSION_FULL := v4.1.1-SukiSU
 ```
 
 ### 5. defconfig
@@ -94,7 +94,7 @@ cp arch/arm64/configs/Pangu_Kirin960_defconfig arch/arm64/configs/Pangu_SukiSU_d
 | CONFIG_DEBUG_INFO | n | 减内存加速编译 |
 | CONFIG_SECURITY_SELINUX_DEVELOP | y | 允许 `setenforce` 切换（**内核不再强制回 permissive**，v25 已摘除 `ZCODE_FORCE_PERMISSIVE`） |
 | CONFIG_DM_VERITY/AVB、HW_ROOT_SCAN、TEE_ANTIROOT_CLIENT 等 | n | 盘古 defconfig 已关，确认无残留 |
-| CONFIG_LOCALVERSION | `"-非酋&大肥鱼自制max版"` | uname 显示（⚠️ 含 `&`，须同步修 Makefile，见 PATCHES.md §M.2） |
+| CONFIG_LOCALVERSION | `"-SukiSU"` | uname 显示（可随意改；⚠️ 若含 shell 元字符如 `&`，须同步修 Makefile，见 PATCHES.md §M.2） |
 
 ### 6. 应用内核补丁
 

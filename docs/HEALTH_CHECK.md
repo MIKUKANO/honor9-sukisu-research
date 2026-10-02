@@ -1,6 +1,10 @@
 # 内核完整体检报告（2026-10-02）
 
-> 对象：设备当前运行的 `kernel_sukisu_v29.img`（内核 `#28`，`4.9.148-非酋&大肥鱼自制max版`）
+> 📝 **关于版本串**：本文档中的 `uname -a` / `UTS_RELEASE` 摘录来自实测日志。早期构建使用过
+> 个人自定义的 `CONFIG_LOCALVERSION` 后缀，公开版本已统一隐去为 **`4.9.148-<自定义后缀>`**
+> （本仓库现在的默认值是 `4.9.148-SukiSU`）。`#N` 与构建时间才是版本的真实标识，未作改动。
+>
+> 对象：设备当前运行的 `kernel_sukisu_v29.img`（内核 `#28`，`4.9.148-<自定义后缀>`）
 > 结论：**功能全绿；SUSFS 9 项特性全部可用并逐条实测**；剩余项均非缺陷。
 > 版本演进与缺陷修复见 §9；v26 首次编入的验证见 §8。
 
@@ -292,11 +296,11 @@ enable_avc_log_spoofing 1 / 0 → rc=0（enabled: 1 / enabled: 0）
 
 | 版本 | 内核 | localversion | 镜像 md5 | 内嵌 Image.gz |
 |---|---|---|---|---|
-| v27 | `#27` | `非酋&大肥鱼自制max版` | — | 15173504 B |
+| v27 | `#27` | `<自定义后缀>` | — | 15173504 B |
 | v28 | `#27` | 同上 | `24daf5f4c2e7685d89c0f087ab9043e2` | 15173536 B |
 | **v29** | **`#28`** | 同上 | **`67cd30e58707170f1bbb8c52ecf647dd`** | 15174992 B |
 
-`UTS_RELEASE = "4.9.148-非酋&大肥鱼自制max版"`（Makefile 的 `filechk_utsrelease.h`
+`UTS_RELEASE = "4.9.148-<自定义后缀>"`（Makefile 的 `filechk_utsrelease.h`
 已从裸 `echo` 改为 `printf '%s'`，否则 localversion 里的 `&` 会被 sh 当后台符 → 编译 Error 127）。
 
 ### 9.5 ⚠️ 遗留观察：两次非本项目原因的重启（已排查，无因果关系）
@@ -307,7 +311,7 @@ enable_avc_log_spoofing 1 / 0 → rc=0（enabled: 1 / enabled: 0）
 
 ```
 PC is at context_struct_compute_av+0xd8/0x4d0
-Tainted: G W  4.9.148-非酋&大肥鱼自制max版 #28
+Tainted: G W  4.9.148-<自定义后缀> #28
 el0_svc_naked → SyS_faccessat → inode_permission2 → security_inode_permission
   → selinux_inode_permission → avc_has_perm_noaudit → avc_compute_av
   → security_compute_av → context_struct_compute_av → type_attribute_bounds_av
@@ -626,10 +630,10 @@ fastboot reboot
 
 ### 12.5 判断"当前跑的是哪个内核"
 
-各版本的 `CONFIG_LOCALVERSION` **完全相同**（都是 `4.9.148-非酋&大肥鱼自制max版`），
+各版本的 `CONFIG_LOCALVERSION` **完全相同**（都是 `4.9.148-<自定义后缀>`），
 所以**不能只看 `uname -r`**。要看 `uname -a` 里的 **`#N` 与构建时间**：
 
 ```
-Linux localhost 4.9.148-非酋&大肥鱼自制max版 #28 SMP PREEMPT Fri Oct 2 02:35:44 UTC 2026 aarch64
+Linux localhost 4.9.148-<自定义后缀> #28 SMP PREEMPT Fri Oct 2 02:35:44 UTC 2026 aarch64
                     ^^^ 版本号（v29 = #28）        ^^^^^^^^^^^^^^^^^^^ 构建时间
 ```

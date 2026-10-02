@@ -34,7 +34,7 @@ sha256sum /data/local/tmp/rb_trunc.img "$IMG"
 
 ### 2. `build_and_pack.sh` 的 `CONFIG_LOCALVERSION` 陷阱
 
-若 `CONFIG_LOCALVERSION` 里含 `&`（如 `非酋&大肥鱼自制max版`），顶层 `Makefile` 的
+若 `CONFIG_LOCALVERSION` 里含 shell 元字符（如 `&`），顶层 `Makefile` 的
 `filechk_utsrelease.h` 会因为 `KERNELRELEASE` 未加引号而被 `/bin/sh` 当作后台符，报 `Error 127`。
 需改为：
 
