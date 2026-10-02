@@ -1,0 +1,22 @@
+diff --git a/android_winusb.inf b/android_winusb.inf
+index 3be72ff..0a0c2ad 100644
+--- a/android_winusb.inf
++++ b/android_winusb.inf
+@@ -23,6 +23,8 @@ HKR,,Icon,,-1
+ 
+ 
+ [Google.NTx86]
++;HONOR 9 / Kirin 960 fastboot (HI3650) -- added by honor9-sukisu project
++%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D
+ 
+ 
+ ;Google Nexus One
+@@ -79,6 +81,8 @@ HKR,,Icon,,-1
+ 
+ 
+ [Google.NTamd64]
++;HONOR 9 / Kirin 960 fastboot (HI3650) -- added by honor9-sukisu project
++%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_D00D
+ 
+ 
+ ;Google Nexus One

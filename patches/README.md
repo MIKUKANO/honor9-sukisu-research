@@ -13,6 +13,7 @@
 | `SUSFS_ABI_NOTES.md` | ~18 KB | **SUSFS ABI 兼容笔记** —— 双布局兼容、`err` 回写偏移、inode 状态位、验证判据等（移植时最有用） |
 | `ksud_integration_fix.patch` | ~25 KB | **ksud 集成修复**（单独摘出，便于定位） |
 | `v24_fixes.patch` | ~17 KB | **v24 修复**（单独摘出）—— sepolicy 空桩替换为 5 处 ABI 移植；`vfs_fstat()` / `input_event()` 直钩 |
+| `winusb_honor9.patch` | ~0.5 KB | **Windows fastboot 驱动补丁** —— 给 Google 官方 `android_winusb.inf` 加 `USB\VID_18D1&PID_D00D`（改 2 处共 4 行）。见 [`../docs/FASTBOOT_DRIVER.md`](../docs/FASTBOOT_DRIVER.md) |
 | `ksu_compat_49.h` | ~1.4 KB | 4.9 内核兼容头（补足上游依赖的新 API） |
 
 > ⭐ **`honor9_all_patches.diff` 已包含** SukiSU 驱动集成、SUSFS 移植（含新增的

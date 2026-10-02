@@ -127,7 +127,9 @@ curl -L -O https://github.com/MIKUKANO/honor9-sukisu-research/releases/download/
 > - **root** = 用 `dd` 写分区时需要 `su`
 > - ✅ **但还有 fastboot 这条路，不需要 root** —— 而且它是**救砖主力**：
 >   关机 → 按住音量下 + 插 USB → `fastboot flash kernel xxx.img`（无需系统能开机）
-> - ⚠️ **前提是装好 fastboot 驱动**（Google 官方 INF 不含 `18D1:D00D`，需改版 INF）
+> - ⚠️ **前提是装好 fastboot 驱动**（Google 官方 INF 不含 `18D1:D00D`，需改一行
+>   —— 见 [`docs/FASTBOOT_DRIVER.md`](docs/FASTBOOT_DRIVER.md)，
+>   改动补丁 [`patches/winusb_honor9.patch`](patches/winusb_honor9.patch)）
 >
 > 详见 [`docs/FLASH.md`](docs/FLASH.md) §0.1–0.3 与 §7。
 
@@ -236,7 +238,8 @@ honor9-sukisu-research/
 │   ├── BUILD.md                  # 编译环境搭建与构建流程
 │   ├── TOOLS.md                  # ⭐ 工具链与外部依赖清单（版本/来源/许可/是否分发）
 │   ├── FLASH.md                  # ⭐ 刷入指南（下载校验/备份/三种刷法/读回/回滚/救援）
-│   ├── FLASH_AND_RESCUE.md       # 刷入、回滚、救援（含 fastboot 驱动）
+│   ├── FASTBOOT_DRIVER.md        # ⭐ Windows fastboot 驱动安装（改 INF 一行）
+│   ├── FLASH_AND_RESCUE.md       # 刷入、回滚、救援（含 fastboot 实测记录）
 │   ├── HEALTH_CHECK.md           # 健康检查与逐项验证记录
 │   ├── PATCHES.md                # 补丁全集与逐条根因分析（最核心，70KB）
 │   └── FIX_KSUD_INTEGRATION.md   # ksud 集成问题的完整排查记录
@@ -247,6 +250,7 @@ honor9-sukisu-research/
 │   ├── Pangu_SukiSU_defconfig    # 最终内核配置（基于盘古 Pangu_Kirin960_defconfig）
 │   ├── ksud_integration_fix.patch
 │   ├── v24_fixes.patch           # sepolicy 移植 + 直钩修复
+│   ├── winusb_honor9.patch       # Windows fastboot 驱动补丁（加 18D1:D00D）
 │   └── ksu_compat_49.h
 └── scripts/
     ├── README.md                 # 各脚本用途说明
